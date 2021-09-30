@@ -1,0 +1,26 @@
+{
+ "type" : "record",
+ "name" : "Avro",
+ "fields" : [
+   {
+     "name" : "gate_id",
+     "type" : "string"
+   },
+   {
+     "name" : "passcard_id",
+     "type" : "string"
+   },
+   {
+     "name" : "status_id",
+     "type" : "int"
+   },
+   {
+     "name" : "direction_id",
+     "type" : "int"
+   },
+   {
+     "name" : "timestamp",
+     "type" : "string"
+   }
+ ]
+}
