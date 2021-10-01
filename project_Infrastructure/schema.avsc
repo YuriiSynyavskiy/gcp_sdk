@@ -4,11 +4,11 @@
  "fields" : [
    {
      "name" : "gate_id",
-     "type" : "string"
+     "type" : "int"
    },
    {
      "name" : "passcard_id",
-     "type" : "string"
+     "type" : "int"
    },
    {
      "name" : "status_id",
