@@ -13,8 +13,11 @@ export export GOOGLE_APPLICATION_CREDENTIALS="/home/<your-user>/.google-cloud-pu
 You need generate file .env where must be structure:
 
 PROJECT_ID=<project-id>
+
 TOPIC_ID=<topic-name>
+
 SCHEMA_ID=<schema-name>
+
 DATASET_ID=<dataset-name>
 
 Generate topic in Pub Sub with script - pub_sub_topic_creation.py.
