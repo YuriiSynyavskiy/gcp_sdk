@@ -8,7 +8,7 @@ Click Actions -> Manage keys -> Add key -> Put google-credentials.json to ~/.
 
 In terminal define path to your file:
 
-export export GOOGLE_APPLICATION_CREDENTIALS="/home/<your-user>/.google-cloud-push-events-keys.json"
+export export GOOGLE_APPLICATION_CREDENTIALS="/home/<your-user>/<file-name>.json"
 
 You need generate file .env where must be structure:
 
