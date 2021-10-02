@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 import argparse
 from apache_beam.options.pipeline_options import PipelineOptions
@@ -19,13 +20,10 @@ dataset_id = os.environ.get("DATASET_ID")
 
 passage_table = 'fk_passage'
 
-class Check(beam.DoFn):
+class ParseToJson(beam.DoFn):
 
     def process(self, element):
-        logger.info(element)
-        logger.info(dir(element))
-        
-        return element
+        return [json.loads(element)]
 
 def main(argv=None):
 
@@ -33,8 +31,7 @@ def main(argv=None):
 
    (p
       | 'ReadData' >> beam.io.ReadFromPubSub(topic=topic_id).with_output_types(bytes)
-      | "Decode" >> beam.Map(lambda x: x.decode('utf-8'))
-      | 'Check' >> beam.ParDo(Check())
+      | 'Transform' >> beam.ParDo(ParseToJson())
       | 'WriteToBigQuery' >> beam.io.WriteToBigQuery(f'{project_id}:{dataset_id}.{passage_table}', schema=schema,
         write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND)
    )

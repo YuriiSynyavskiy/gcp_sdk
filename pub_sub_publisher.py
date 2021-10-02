@@ -19,8 +19,8 @@ topic_name = f'projects/{project_id}/topics/{topic_id}'
 
 while True:
     message = {
-        "gate_id":str(randint(1,10)),
-        "passcard_id":str(randint(1,10)),
+        "gate_id":randint(1,10),
+        "passcard_id":randint(1,10),
         "status_id":randint(1,4),
         "direction_id":randint(1,2),
         "timestamp": str(datetime.timestamp(datetime.now())).split('.')[0]
