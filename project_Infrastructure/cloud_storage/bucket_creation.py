@@ -26,7 +26,13 @@ try:
     
     blob = new_bucket.blob('staging/')
     blob.upload_from_string('', content_type='application/x-www-form-urlencoded;charset=UTF-8')
-    
+
+    blob = new_bucket.blob('persons/')
+    blob.upload_from_string('', content_type='application/x-www-form-urlencoded;charset=UTF-8')
+
+    blob = new_bucket.blob('processed_persons/')
+    blob.upload_from_string('', content_type='application/x-www-form-urlencoded;charset=UTF-8')
+
     print("Subdirectories created.")
 except Conflict:
     print("Bucket with such name is already created.")
