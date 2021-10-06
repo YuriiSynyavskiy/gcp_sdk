@@ -119,7 +119,7 @@ if stg_person_table in tables:
 else:
     query = f"""
         CREATE TABLE {dataset_id}.{stg_person_table}(
-            hash_id STRING
+            hash_id STRING not null,
             person_id STRING not null,
             demartment_id STRING,
             dm_position_id STRING,
