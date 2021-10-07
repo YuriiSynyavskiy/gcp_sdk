@@ -20,14 +20,25 @@ with airflow.DAG(
     load_csv = GCSToBigQueryOperator(
         task_id='gcs_to_bigquery',
         bucket=Variable.get("BUCKET_ID"),
-        source_objects=["{{ ti.xcom_pull(task_ids='define_file_for_uploading')}}"],
+        source_objects=[
+            "{{ ti.xcom_pull(task_ids='define_file_for_uploading')}}"],
         destination_project_dataset_table=f"{Variable.get('DATASET_ID')}.landing_dm_person",
         write_disposition='WRITE_TRUNCATE',
         skip_leading_rows=1,
-        autodetect = True,
+        schema_fields=[
+            {'name': 'person_id', 'type': 'STRING', 'mode': 'REQUIRED'},
+            {'name': 'department_id', 'type': 'STRING', 'mode': 'NULLABLE'},
+            {'name': 'dm_position_id', 'type': 'STRING', 'mode': 'NULLABLE'},
+            {'name': 'name', 'type': 'STRING', 'mode': 'NULLABLE'},
+            {'name': 'surname', 'type': 'STRING', 'mode': 'NULLABLE'},
+            {'name': 'salary', 'type': 'INT', 'mode': 'NULLABLE'},
+            {'name': 'phone', 'type': 'STRING', 'mode': 'NULLABLE'},
+            {'name': 'start_date', 'type': 'DATETIME', 'mode': 'NULLABLE'},
+            {'name': 'end_date', 'type': 'DATETIME', 'mode': 'NULLABLE'}
+        ],
         dag=dag,
     )
 
-    landing_to_staging = 
+    landing_to_staging =
 
     define_file_to_process >> load_csv >> landing_to_staging
