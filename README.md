@@ -30,3 +30,12 @@ Generate schema of BigQuery with script - bigquery_schema.py
 If you want to run pub_sub_topic_creation.py increase version of google-cloud-pubsub>=2.8.0
 
 If you want to run streaming job decrease version of google-cloud-pubsub==1.7.0
+
+# Trigger to handle finalized files to Google Cloud Storage
+
+Set trigger for Finalizing/Creating to Cloud Storage with BUCKET_ID
+
+Create Cloud Function and put code from cloud_storage/invoke_function.py
+
+Give role for Function to run Cloud Composer Dags.
+
