@@ -1,9 +1,13 @@
 import datetime
 import airflow
+import tables
 from person_scd_define_file import define_file
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
 from airflow.contrib.operators.gcs_to_bq import GCSToBigQueryOperator
+from airflow.contrib.operators.bigquery_operator import BigQueryOperator
+from lnd_to_stg_sql import sql_landing_to_staging
+from run_sql_to_bigquery import run_sql
 
 
 with airflow.DAG(
@@ -22,23 +26,30 @@ with airflow.DAG(
         bucket=Variable.get("BUCKET_ID"),
         source_objects=[
             "{{ ti.xcom_pull(task_ids='define_file_for_uploading')}}"],
-        destination_project_dataset_table=f"{Variable.get('DATASET_ID')}.landing_dm_person",
+        destination_project_dataset_table=f"{Variable.get('DATASET_ID')}.{tables.landing_table}",
         write_disposition='WRITE_TRUNCATE',
         skip_leading_rows=1,
         schema_fields=[
             {'name': 'person_id', 'type': 'STRING', 'mode': 'REQUIRED'},
             {'name': 'department_id', 'type': 'STRING', 'mode': 'NULLABLE'},
-            {'name': 'dm_position_id', 'type': 'STRING', 'mode': 'NULLABLE'},
+            {'name': 'position_id', 'type': 'STRING', 'mode': 'NULLABLE'},
             {'name': 'name', 'type': 'STRING', 'mode': 'NULLABLE'},
             {'name': 'surname', 'type': 'STRING', 'mode': 'NULLABLE'},
-            {'name': 'salary', 'type': 'INT', 'mode': 'NULLABLE'},
+            {'name': 'salary', 'type': 'INTEGER', 'mode': 'NULLABLE'},
             {'name': 'phone', 'type': 'STRING', 'mode': 'NULLABLE'},
-            {'name': 'start_date', 'type': 'DATETIME', 'mode': 'NULLABLE'},
-            {'name': 'end_date', 'type': 'DATETIME', 'mode': 'NULLABLE'}
+            {'name': 'start_date', 'type': 'STRING', 'mode': 'NULLABLE'},
+            {'name': 'end_date', 'type': 'STRING', 'mode': 'NULLABLE'}
         ],
         dag=dag,
     )
-
-    landing_to_staging =
+    
+    landing_to_staging = BigQueryOperator(
+        dag=dag,
+        task_id='landing_to_staging',
+        location='US',
+        use_legacy_sql=False,
+        write_disposition='WRITE_APPEND',
+        sql=sql_landing_to_staging
+    )
 
     define_file_to_process >> load_csv >> landing_to_staging
