@@ -1,14 +1,12 @@
 import datetime
 import airflow
-import tables
-from person_scd_define_file import define_file
+from person_dist import tables
+from person_dist.person_scd_define_file import define_file
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
 from airflow.contrib.operators.gcs_to_bq import GCSToBigQueryOperator
 from airflow.contrib.operators.bigquery_operator import BigQueryOperator
-from lnd_to_stg_sql import sql_landing_to_staging
-from run_sql_to_bigquery import run_sql
-
+from person_dist.sql_queries import sql_landing_to_staging, sql_staging_to_target
 
 with airflow.DAG(
         'person_scd_dag',
@@ -48,8 +46,18 @@ with airflow.DAG(
         task_id='landing_to_staging',
         location='US',
         use_legacy_sql=False,
-        write_disposition='WRITE_APPEND',
+        write_disposition='WRITE_TRUNCATE',
         sql=sql_landing_to_staging
     )
 
-    define_file_to_process >> load_csv >> landing_to_staging
+    staging_to_target = BigQueryOperator(
+        dag=dag,
+        task_id='staging_to_target',
+        location='US',
+        use_legacy_sql=False,
+        write_disposition='WRITE_APPEND',
+        sql=sql_staging_to_target
+    )
+
+    # archive_file
+    define_file_to_process >> load_csv >> landing_to_staging >> staging_to_target # >> archive_file
