@@ -35,7 +35,8 @@ sql_staging_to_target = f"""
     select hash_id, generate_uuid(), person_id, department_id, department_id, position_id, name, surname, salary, phone, start_date, end_date, current_datetime(), datetime('9999-12-31T23:59:59'), 'Y' 
     from {Variable.get('DATASET_ID')}.{staging_table};
 
-    delete from {Variable.get('DATASET_ID')}.{staging_table} where true;
+    delete from {Variable.get('DATASET_ID')}.{staging_table} where true; 
+    delete from {Variable.get('DATASET_ID')}.{landing_table} where true; 
     COMMIT TRANSACTION;
     """
 

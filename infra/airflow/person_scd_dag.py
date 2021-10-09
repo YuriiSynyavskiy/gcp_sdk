@@ -1,23 +1,36 @@
 import datetime
 import airflow
 from person_dist import tables
-from person_dist.person_scd_define_file import define_file
 from airflow.models import Variable
-from airflow.operators.python import PythonOperator
+from airflow.operators.dummy import DummyOperator
+from airflow.operators.dagrun_operator import TriggerDagRunOperator
 from airflow.contrib.operators.gcs_to_bq import GCSToBigQueryOperator
 from airflow.contrib.operators.bigquery_operator import BigQueryOperator
+from airflow.operators.python import PythonOperator, BranchPythonOperator
+from airflow.providers.google.cloud.transfers.gcs_to_gcs import GCSToGCSOperator
 from person_dist.sql_queries import sql_landing_to_staging, sql_staging_to_target
+from person_dist.person_scd_define_file import define_file, check_file_existing, check_more_files
+
 
 with airflow.DAG(
         'person_scd_dag',
         start_date=datetime.datetime(2021, 1, 1),
         # Not scheduled, trigger only
         schedule_interval=None) as dag:
-
+    
     define_file_to_process = PythonOperator(
         task_id='define_file_for_uploading',
-        python_callable=define_file
+        python_callable=define_file,
+        dag=dag,
     )
+
+    check_file = BranchPythonOperator(
+        task_id='check_file_existing',
+        python_callable=check_file_existing,
+        dag=dag,
+    )
+
+    pass_operator = DummyOperator(task_id='pass', dag=dag)
 
     load_csv = GCSToBigQueryOperator(
         task_id='gcs_to_bigquery',
@@ -59,5 +72,30 @@ with airflow.DAG(
         sql=sql_staging_to_target
     )
 
-    # archive_file
-    define_file_to_process >> load_csv >> landing_to_staging >> staging_to_target # >> archive_file
+    archive_file = GCSToGCSOperator(
+        task_id='archive_file',
+        source_bucket=Variable.get("BUCKET_ID"),
+        source_objects=["{{ti.xcom_pull(task_ids='define_file_for_uploading')}}"],
+        destination_bucket=Variable.get("BUCKET_ID"),
+        destination_object="processed_{{ti.xcom_pull(task_ids='define_file_for_uploading')}}",
+        move_object=True
+    )
+
+    check_for_another_file = BranchPythonOperator(
+        task_id='check_rerun_dag',
+        python_callable=check_more_files,
+        dag=dag,
+    )
+
+    rerun_dag = run_this = TriggerDagRunOperator(
+        task_id='rerun_dag',
+        trigger_dag_id='person_scd_dag',
+        dag=dag
+    )
+
+ 
+    define_file_to_process >> check_file >> load_csv >> landing_to_staging >> staging_to_target >> archive_file >> check_for_another_file >> pass_operator
+    define_file_to_process >> check_file >> load_csv >> landing_to_staging >> staging_to_target >> archive_file >> check_for_another_file >> rerun_dag
+    define_file_to_process >> check_file >> pass_operator
+
+    
