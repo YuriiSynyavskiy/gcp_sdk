@@ -100,8 +100,8 @@ else:
     query = f"""
         CREATE TABLE {dataset_id}.{l_person_table}(
             person_id STRING not null,
-            demartment_id STRING,
-            dm_position_id STRING,
+            department_id STRING,
+            position_id STRING,
             name STRING,
             surname STRING,
             salary INT,
@@ -121,8 +121,8 @@ else:
         CREATE TABLE {dataset_id}.{stg_person_table}(
             hash_id STRING not null,
             person_id STRING not null,
-            demartment_id STRING,
-            dm_position_id STRING,
+            department_id STRING,
+            position_id STRING,
             name STRING,
             surname STRING,
             salary INT,
