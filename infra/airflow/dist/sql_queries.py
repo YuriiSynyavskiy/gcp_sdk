@@ -53,10 +53,11 @@ sql_landing_to_staging_dept = f"""
     """
 
 sql_staging_to_target_dept = f"""
+    BEGIN TRANSACTION;
     update {Variable.get('DATASET_ID')}.{target_dept_table} t 
     set 
         t.effective_end_date = current_datetime(),
-        t.current_flag='N',
+        t.current_flag='N'
     from {Variable.get('DATASET_ID')}.{staging_dept_table} a 
     where a.department_id = t.department_id and t.current_flag='Y';
 
