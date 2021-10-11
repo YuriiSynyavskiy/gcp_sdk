@@ -9,7 +9,7 @@ from airflow.contrib.operators.bigquery_operator import BigQueryOperator
 from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.providers.google.cloud.transfers.gcs_to_gcs import GCSToGCSOperator
 from dist.sql_queries import sql_landing_to_staging_dept, sql_staging_to_target_dept
-from dist.person_scd_define_file import define_file, check_file_existing, check_more_files
+from dist.utils import define_file, check_file_existing, check_more_files
 
 
 with airflow.DAG(
