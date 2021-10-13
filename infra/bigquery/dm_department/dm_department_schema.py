@@ -3,6 +3,7 @@ import time
 from dotenv import load_dotenv
 from google.cloud import bigquery
 
+
 def create_dm_department_schema():
     load_dotenv()
 
@@ -17,12 +18,11 @@ def create_dm_department_schema():
 
     stg_dept_table = f"staging_{target_dept_table}"
 
-
     query = f"""
             SELECT table_name
             FROM {dataset_id}.INFORMATION_SCHEMA.TABLES;
     """
-    query_job = client.query(query) 
+    query_job = client.query(query)
 
     tables = [table.table_name for table in query_job]
 
@@ -38,7 +38,7 @@ def create_dm_department_schema():
                 parent_id STRING
             );
         """
-        query_job = client.query(query) 
+        query_job = client.query(query)
         print(f"Table {l_dept_table} was successfully created.")
 
     if stg_dept_table in tables:
@@ -54,7 +54,7 @@ def create_dm_department_schema():
                 parent_id STRING
             );
         """
-        query_job = client.query(query) 
+        query_job = client.query(query)
         print(f"Table {stg_dept_table} was successfully created.")
 
     if target_dept_table in tables:
@@ -65,7 +65,7 @@ def create_dm_department_schema():
                 hash_id STRING not null,
                 dm_department_id STRING not null,
                 department_id STRING not null,
-                building_id STRING,
+                dm_building_id STRING,
                 name STRING,
                 description STRING,
                 parent_id STRING,
@@ -74,9 +74,8 @@ def create_dm_department_schema():
                 current_flag STRING 
             );
         """
-        query_job = client.query(query) 
+        query_job = client.query(query)
         print(f"Table {target_dept_table} was successfully created.")
-
 
 
 if __name__ == "__main__":
