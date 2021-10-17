@@ -69,3 +69,12 @@ sql_staging_to_target_dept = f"""
     delete from {Variable.get('DATASET_ID')}.{landing_dept_table} where true; 
     COMMIT TRANSACTION;
     """
+
+
+sql_landing_to_staging_location = f"""
+
+"""
+
+sql_staging_to_target_location = f"""
+    
+"""
