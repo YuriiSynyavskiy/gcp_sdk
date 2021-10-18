@@ -40,7 +40,7 @@ with airflow.DAG(
         task_id='gcs_to_bigquery',
         bucket=Variable.get("BUCKET_ID"),
         source_objects=[
-            "{{ ti.xcom_pull(task_ids='define_file_for_uploading')}}"],
+            "{{ ti.xcom_pull(task_ids='check_stream_state_task')}}"],
         destination_project_dataset_table=f"{Variable.get('DATASET_ID')}.{tables.landing_location_table}",
         write_disposition='WRITE_TRUNCATE',
         skip_leading_rows=1,
