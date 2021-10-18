@@ -3,7 +3,7 @@ import csv
 import random
 import argparse
 from dotenv import load_dotenv
-from google.cloud import storage
+# from google.cloud import storage
 from datetime import datetime
 
 HEADER = ['id', 'building_id', 'security_id', 'gate_id',
@@ -22,12 +22,12 @@ def generate_description():
 
 
 def create_data(file_path):
-    with open(file_path, 'w') as f:
+    with open(file_path, 'w', newline='') as f:
         location_writer = csv.DictWriter(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, 
                                         fieldnames=HEADER)
         location_writer.writeheader()
         list_of_dict = []
-        for i in range(1,11):
+        for i in range(1,101):
             room, floor = generate_room_number()
             result = {"id": str(i), "building_id": random.randint(1,20), 
                                             "security_id": random.randint(1,10), "gate_id": random.randint(1,50), 

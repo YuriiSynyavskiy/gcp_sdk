@@ -18,20 +18,23 @@ with airflow.DAG(
         # Not scheduled, trigger only
         schedule_interval=None) as dag:
     
-    define_file_to_process = PythonOperator(
-        task_id='define_file_for_uploading',
+    check_stream_state_task = PythonOperator(
+        task_id='check_stream_state_task',
         python_callable=define_file,
         op_kwargs={'path': 'locations/'},
         dag=dag,
     )
 
-    check_file = BranchPythonOperator(
-        task_id='check_file_existing',
+    find_file_to_process_task = BranchPythonOperator(
+        task_id='find_file_to_process_task',
         python_callable=check_file_existing,
         dag=dag,
     )
 
-    pass_operator = DummyOperator(task_id='pass', dag=dag)
+    nothing_to_process_task = DummyOperator(
+        task_id='nothing_to_process',
+        dag=dag
+    )
 
     load_csv = GCSToBigQueryOperator(
         task_id='gcs_to_bigquery',
@@ -74,25 +77,29 @@ with airflow.DAG(
     archive_file = GCSToGCSOperator(
         task_id='archive_file',
         source_bucket=Variable.get("BUCKET_ID"),
-        source_objects=["{{ti.xcom_pull(task_ids='define_file_for_uploading')}}"],
+        source_objects=["{{ti.xcom_pull(task_ids='check_stream_state_task')}}"],
         destination_bucket=Variable.get("BUCKET_ID"),
-        destination_object="processed_{{ti.xcom_pull(task_ids='define_file_for_uploading')}}",
+        destination_object="processed_{{ti.xcom_pull(task_ids='check_stream_state_task')}}",
         move_object=True
     )
 
-    check_for_another_file = BranchPythonOperator(
-        task_id='check_rerun_dag',
+    check_recursive_task = BranchPythonOperator(
+        task_id='check_recursive_task',
         python_callable=check_more_files,
         dag=dag,
     )
 
-    rerun_dag = run_this = TriggerDagRunOperator(
-        task_id='rerun_dag',
+    skip_recursive_call_task = DummyOperator(
+        task_id='skip_recursive_call',
+        dag=dag)
+
+    execute_recursive_call_task = TriggerDagRunOperator(
+        task_id='execute_recursive_call_task',
         trigger_dag_id='location_scd_dag',
         dag=dag
     )
 
  
-    define_file_to_process >> check_file >> load_csv >> landing_to_staging >> staging_to_target >> archive_file >> check_for_another_file >> pass_operator
-    define_file_to_process >> check_file >> load_csv >> landing_to_staging >> staging_to_target >> archive_file >> check_for_another_file >> rerun_dag
-    define_file_to_process >> check_file >> pass_operator
+    check_stream_state_task >> find_file_to_process_task >> load_csv >> landing_to_staging >> staging_to_target >> archive_file >> check_recursive_task >> skip_recursive_call_task
+    check_stream_state_task >> find_file_to_process_task >> load_csv >> landing_to_staging >> staging_to_target >> archive_file >> check_recursive_task >> execute_recursive_call_task
+    check_stream_state_task >> find_file_to_process_task >> nothing_to_process_task
