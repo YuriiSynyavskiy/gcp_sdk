@@ -1,5 +1,6 @@
 from dist.tables import (landing_person_table, staging_person_table, target_person_table,
-                        landing_dept_table, staging_dept_table, target_dept_table)
+                        landing_dept_table, staging_dept_table, target_dept_table, landing_location_table,
+                        staging_location_table, target_location_table)
 
 from airflow.models import Variable
 
@@ -70,11 +71,30 @@ sql_staging_to_target_dept = f"""
     COMMIT TRANSACTION;
     """
 
-
 sql_landing_to_staging_location = f"""
-
-"""
+    INSERT INTO {Variable.get('DATASET_ID')}.{staging_location_table} 
+    SELECT b.hash_id, b.location_id, b.building_id, b.security_id, b.gate_id, b.room_number, b.floor, b.description 
+    FROM {Variable.get('DATASET_ID')}.{target_location_table} a right join ( 
+    select to_hex(md5(concat(building_id, security_id, gate_id, room_number, floor, description))) as hash_id, 
+    location_id, building_id, security_id, gate_id, room_number, floor, description
+    FROM {Variable.get('DATASET_ID')}.{landing_location_table} ) b on a.location_id = b.location_id 
+    WHERE a.hash_id is null or a.flag='Y' and a.hash_id != b.hash_id;
+    """
 
 sql_staging_to_target_location = f"""
-    
-"""
+    BEGIN TRANSACTION;
+    update {Variable.get('DATASET_ID')}.{target_location_table} t 
+    set 
+        t.effective_end_date = current_datetime(),
+        t.flag='N'
+    from {Variable.get('DATASET_ID')}.{staging_location_table} a 
+    where a.location_id = t.location_id and t.flag='Y';
+
+    insert into {Variable.get('DATASET_ID')}.{target_location_table} 
+    select hash_id, generate_uuid(), location_id, building_id, security_id, gate_id, room_number, floor, description, current_datetime(), datetime('9999-12-31T23:59:59'), 'Y' 
+    from {Variable.get('DATASET_ID')}.{staging_location_table};
+
+    delete from {Variable.get('DATASET_ID')}.{staging_location_table} where true; 
+    delete from {Variable.get('DATASET_ID')}.{landing_location_table} where true; 
+    COMMIT TRANSACTION;
+    """
