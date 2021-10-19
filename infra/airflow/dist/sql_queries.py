@@ -1,6 +1,5 @@
-from dist.tables import (landing_person_table, staging_person_table, target_person_table,
-                        landing_dept_table, staging_dept_table, target_dept_table, landing_location_table,
-                        staging_location_table, target_location_table)
+from dist.tables import (landing_person_table, staging_person_table, target_person_table, landing_location_table,
+                        staging_location_table, target_location_table, dept_table_name, tmp_dept_table_name)
 
 from airflow.models import Variable
 
@@ -43,31 +42,42 @@ sql_staging_to_target = f"""
     COMMIT TRANSACTION;
     """
 
+sql_temporary_to_landing_dept = f"""
+    INSERT INTO {Variable.get('LANDING_DATASET_ID')}.{dept_table_name} 
+    SELECT '{{{{run_id}}}}', department_key, building_id, name, description, parent_id 
+    FROM {Variable.get('LANDING_DATASET_ID')}.{tmp_dept_table_name};
+"""
+
 sql_landing_to_staging_dept = f"""
-    INSERT INTO {Variable.get('DATASET_ID')}.{staging_dept_table} 
-    SELECT b.hash_id, b.department_id, b.building_id, b.name, b.description, b.parent_id 
-    FROM {Variable.get('DATASET_ID')}.{target_dept_table} a right join ( 
-    select to_hex(md5(concat(building_id, name, description, ifnull(parent_id, '' )))) as hash_id, 
-    department_id, building_id, name, description, parent_id 
-    FROM {Variable.get('DATASET_ID')}.{landing_dept_table} ) b on a.department_id = b.department_id 
-    WHERE a.hash_id is null or a.current_flag='Y' and a.hash_id != b.hash_id; 
+    BEGIN TRANSACTION;
+    delete from {Variable.get('STAGING_DATASET_ID')}.{dept_table_name} where true; 
+    delete from {Variable.get('LANDING_DATASET_ID')}.{tmp_dept_table_name} where true; 
+
+    INSERT INTO {Variable.get('STAGING_DATASET_ID')}.{dept_table_name} 
+    SELECT b.department_key, b.building_id, b.name, b.description, b.parent_id, b.hash_key 
+    FROM {Variable.get('DATASET_ID')}.{dept_table_name} a right join ( 
+    select to_hex(md5(concat(building_id, name, description, ifnull(parent_id, '' )))) as hash_key, 
+    department_key, building_id, name, description, parent_id, run_id 
+    FROM {Variable.get('LANDING_DATASET_ID')}.{dept_table_name} 
+    WHERE run_id = '{{{{run_id}}}}') b on a.department_key = b.department_key 
+    WHERE a.hash_key is null or a.current_flag='Y' and a.hash_key != b.hash_key; 
+
+    COMMIT TRANSACTION;
     """
 
 sql_staging_to_target_dept = f"""
     BEGIN TRANSACTION;
-    update {Variable.get('DATASET_ID')}.{target_dept_table} t 
+    update {Variable.get('DATASET_ID')}.{dept_table_name} t 
     set 
         t.effective_end_date = current_datetime(),
         t.current_flag='N'
-    from {Variable.get('DATASET_ID')}.{staging_dept_table} a 
-    where a.department_id = t.department_id and t.current_flag='Y';
+    from {Variable.get('STAGING_DATASET_ID')}.{dept_table_name} a 
+    where a.department_key = t.department_key and t.current_flag='Y';
 
-    insert into {Variable.get('DATASET_ID')}.{target_dept_table} 
-    select hash_id, generate_uuid(), department_id, building_id, name, description, parent_id, current_datetime(), datetime('9999-12-31T23:59:59'), 'Y' 
-    from {Variable.get('DATASET_ID')}.{staging_dept_table};
+    insert into {Variable.get('DATASET_ID')}.{dept_table_name} 
+    select generate_uuid(), department_key, building_id, name, description, parent_id, current_datetime(), datetime('9999-12-31T23:59:59'), 'Y', hash_key
+    from {Variable.get('STAGING_DATASET_ID')}.{dept_table_name};
 
-    delete from {Variable.get('DATASET_ID')}.{staging_dept_table} where true; 
-    delete from {Variable.get('DATASET_ID')}.{landing_dept_table} where true; 
     COMMIT TRANSACTION;
     """
 
