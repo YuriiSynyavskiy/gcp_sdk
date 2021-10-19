@@ -33,7 +33,7 @@ if __name__=="__main__":
         
             person_writer.writerows({"id": str(i), "department_id": random.randint(1,20), "position_id": random.randint(1,8), "name": names.get_first_name(),
                                      "surname": names.get_last_name(), "salary": random.randint(2,14)*random.choice([1000, 1250]), "phone": phn(), 
-                                     "start_date": f"{random.randint(1980, 2021)}-{random.randint(1,12)}-{random.randint(1,28)} 00:00:00"} for i in range(1,101))
+                                     "start_date": f"{random.randint(1980, 2021)}-{random.randint(1,12)}-{random.randint(1,28)}"} for i in range(1,101))
                     
     else:
         try:
