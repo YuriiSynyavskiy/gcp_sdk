@@ -33,7 +33,7 @@ if __name__=="__main__":
             for i in range(3,21):
                 random_name = available_depts_names.pop(random.randint(0, len(available_depts_names)-1))
 
-                dept_writer.writerow([str(i), random.randint(1,20), random_name, gen.sentence(), (random.randint(1,3) if not i == 3 else random.randint(1,2))])
+                dept_writer.writerow([str(i), random.randint(1,2), random_name, gen.sentence(), (random.randint(1,3) if not i == 3 else random.randint(1,2))])
 
 
     else:
@@ -52,7 +52,7 @@ if __name__=="__main__":
 
                             # Change building_id
                             if choice == 1:  
-                                row[1] = random.randint(1,20)
+                                row[1] = random.randint(1,2)
                             #Change description
                             elif choice == 2:
                                 row[3] = gen.sentence()
