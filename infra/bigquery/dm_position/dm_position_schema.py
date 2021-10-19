@@ -35,7 +35,7 @@ def create_dm_position_schema():
         
         time.sleep(5)
 
-        query = """
+        query = f"""
         INSERT {dataset_id}.{table_name} values 
             (1, 'Developer'),
             (2, 'QA'),
@@ -44,7 +44,7 @@ def create_dm_position_schema():
             (5, 'Englist Teacher'),
             (6, 'Salesforce'),
             (7, 'DevOps'),
-            (8, 'AQA'),
+            (8, 'AQA');
         """
         query_job = client.query(query)
         print(f"Dimension {table_name} was successfully generated.")

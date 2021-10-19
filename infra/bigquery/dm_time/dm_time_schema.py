@@ -9,7 +9,6 @@ def create_dm_time_schema():
     client = bigquery.Client()
 
     dataset_id = os.environ.get("DATASET_ID")
-    project_id = os.environ.get("PROJECT_ID")
 
     table_name = 'dm_time'
 
@@ -37,9 +36,9 @@ def create_dm_time_schema():
         
         time.sleep(5)
 
-        query = """
+        query = f"""
         INSERT INTO {dataset_id}.{table_name}  
-        SELECT FORMAT_TIMESTAMP("%H-%M-%S", TIMESTAMP_SECONDS(d)) as id, 
+        SELECT FORMAT_TIMESTAMP("%H%M%S", TIMESTAMP_SECONDS(d)) as id, 
                EXTRACT(hour from TIMESTAMP_SECONDS(d)) as hours, 
                EXTRACT(minute from TIMESTAMP_SECONDS(d)) as minutes, 
                EXTRACT(second from TIMESTAMP_SECONDS(d)) as seconds, 
