@@ -24,7 +24,7 @@ def check_file_existing(ti, **kwargs):
     object_for_processing = ti.xcom_pull(task_ids='define_file_for_uploading')
     if object_for_processing:
         logger.log_struct({
-            'message': f"{datetime.now(tz=None)} Detecet object {object_for_processing} for processing in {kwargs['namespace']} job {kwargs['dag_run'].run_id}",
+            'message': f"{datetime.now(tz=None)} Detected object {object_for_processing} for processing in {kwargs['namespace']} job {kwargs['dag_run'].run_id}",
             'run_id': kwargs['dag_run'].run_id,
             'object_for_processing': object_for_processing
         }, severity="INFO")
