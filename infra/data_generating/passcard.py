@@ -46,7 +46,7 @@ def get_n_random_passcards(n: int):
                 uuid.uuid4(),
                 random.randint(1, 10),
                 random.randint(1, 10),
-                *get_random_date_range(START_DATE, END_DATE),
+                *map(int, get_random_date_range(START_DATE, END_DATE)),
             )
         )
 
@@ -57,7 +57,7 @@ def write_passcards_to_file(passcards: List[Passcard]) -> str:
     filename = ''.join([
         'passcard_',
         str(datetime.today().replace(microsecond=0).timestamp())[0:-2],
-        '.tsv',
+        '.csv',
     ])
 
     with open(filename, 'a+') as tsv:

@@ -21,8 +21,8 @@ def create_passcard_landing_table():
         SchemaField('passcard_key', 'STRING', mode='REQUIRED'),
         SchemaField('person_id', 'INTEGER', mode='REQUIRED'),
         SchemaField('security_id', 'INTEGER', mode='REQUIRED'),
-        SchemaField('start_date', 'DATE', mode='REQUIRED'),
-        SchemaField('expires_at', 'DATE'),
+        SchemaField('start_date', 'INTEGER', mode='REQUIRED'),
+        SchemaField('expires_at', 'INTEGER'),
     ]
 
     table = Table('.'.join([
