@@ -9,10 +9,10 @@ from dotenv import dotenv_values
 from google.cloud.storage import Client as StorageClient
 from google.oauth2 import service_account
 
-pattern = '%Y-%m-%d'
+pattern = '%Y%m%d'
 
-START_DATE = datetime.strptime('2000-01-01', pattern)
-END_DATE = datetime.strptime('2100-01-01', pattern)
+START_DATE = datetime.strptime('20000101', pattern)
+END_DATE = datetime.strptime('21000101', pattern)
 STORAGE_FOLDER = 'passcards'
 
 Passcard = namedtuple(
