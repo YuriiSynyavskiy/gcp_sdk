@@ -1,3 +1,4 @@
+from datetime import date
 import os
 import time
 from dotenv import load_dotenv
@@ -9,15 +10,12 @@ def create_person_schema():
     client = bigquery.Client()
 
     dataset_id = os.environ.get("DATASET_ID")
-    project_id = os.environ.get("PROJECT_ID")
 
+    landing_dataset_id = os.environ.get("LANDING_DATASET_ID")
+    staging_dataset_id = os.environ.get("STAGING_DATASET_ID")
     # Creating Person models for SCD
 
-    target_person_table = "dm_person"
-
-    l_person_table = f"landing_{target_person_table}"
-
-    stg_person_table = f"staging_{target_person_table}"
+    person_table_name = "dm_person"
 
     query = f"""
             SELECT table_name
@@ -25,16 +23,15 @@ def create_person_schema():
     """
     query_job = client.query(query) 
 
-    tables = [table.table_name for table in query_job]
+    target_tables = [table.table_name for table in query_job]
 
-    if target_person_table in tables:
-        print(f"Table {target_person_table} is already existing")
+    if person_table_name in target_tables:
+        print(f"Table {person_table_name} is already existing in {dataset_id}")
     else:
         query = f"""
-            CREATE TABLE {dataset_id}.{target_person_table}(
-                hash_id STRING not null,
+            CREATE TABLE {dataset_id}.{person_table_name}(
                 dm_person_id STRING not null,
-                person_id STRING not null,
+                person_key STRING not null,
                 current_dm_department_id STRING,
                 prev_dm_department_id STRING,
                 dm_position_id STRING,
@@ -42,55 +39,95 @@ def create_person_schema():
                 surname STRING,
                 salary INT,
                 phone STRING,
-                start_date DATETIME,
-                end_date DATETIME,
+                start_date DATE,
+                start_date_id INT,
+                end_date DATE,
+                end_date_id INT,
                 effective_start_date DATETIME,
                 effective_end_date DATETIME,
-                current_flag STRING 
+                current_flag STRING,
+                hash_key STRING not null
             );
         """
         query_job = client.query(query) 
-        print(f"Table {target_person_table} was successfully created.")
+        print(f"Table {person_table_name} was successfully created in {dataset_id}.")
 
-    if l_person_table in tables:
-        print(f"Table {l_person_table} is already existing")
+    query = f"""
+            SELECT table_name
+            FROM {landing_dataset_id}.INFORMATION_SCHEMA.TABLES;
+    """
+    query_job = client.query(query) 
+
+    landing_tables = [table.table_name for table in query_job]
+    tmp_person_table_name = f"tmp_{person_table_name}"
+
+    if tmp_person_table_name in landing_tables:
+        print(f"Table {tmp_person_table_name} is already existing in {landing_dataset_id}")
     else:
         query = f"""
-            CREATE TABLE {dataset_id}.{l_person_table}(
-                person_id STRING not null,
+            CREATE TABLE {landing_dataset_id}.{tmp_person_table_name}(
+                person_key STRING not null,
                 department_id STRING,
                 position_id STRING,
                 name STRING,
                 surname STRING,
                 salary INT,
                 phone STRING,
-                start_date DATETIME,
-                end_date DATETIME,
+                start_date DATE,
+                end_date DATE,
             );
         """
         query_job = client.query(query)
-        print(f"Table {l_person_table} was successfully created.")
+        print(f"Table {tmp_person_table_name} was successfully created in {landing_dataset_id}.")
 
-
-    if stg_person_table in tables:
-        print(f"Table {stg_person_table} is already existing")
+    if person_table_name in landing_tables:
+        print(f"Table {person_table_name} is already existing in {landing_dataset_id}")
     else:
         query = f"""
-            CREATE TABLE {dataset_id}.{stg_person_table}(
-                hash_id STRING not null,
-                person_id STRING not null,
+            CREATE TABLE {landing_dataset_id}.{person_table_name}(
+                run_id STRING not null,
+                person_key STRING not null,
                 department_id STRING,
                 position_id STRING,
                 name STRING,
                 surname STRING,
                 salary INT,
                 phone STRING,
-                start_date DATETIME,
-                end_date DATETIME,
+                start_date DATE,
+                end_date DATE,
             );
         """
         query_job = client.query(query)
-        print(f"Table {stg_person_table} was successfully created.")
+        print(f"Table {person_table_name} was successfully created in {landing_dataset_id}.")
+
+    query = f"""
+            SELECT table_name
+            FROM {staging_dataset_id}.INFORMATION_SCHEMA.TABLES;
+    """
+    query_job = client.query(query) 
+
+    staging_tables = [table.table_name for table in query_job]
+
+
+    if person_table_name in staging_tables:
+        print(f"Table {person_table_name} is already existing in {staging_dataset_id}")
+    else:
+        query = f"""
+            CREATE TABLE {staging_dataset_id}.{person_table_name}(
+                person_key STRING not null,
+                department_id STRING,
+                position_id STRING,
+                name STRING,
+                surname STRING,
+                salary INT,
+                phone STRING,
+                start_date DATE,
+                end_date DATE,
+                hash_key STRING not null
+            );
+        """
+        query_job = client.query(query)
+        print(f"Table {person_table_name} was successfully created in {staging_dataset_id}.")
 
 if __name__ == "__main__":
     create_person_schema()
