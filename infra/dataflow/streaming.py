@@ -12,7 +12,7 @@ load_dotenv()
 
 project_id = os.environ.get("PROJECT_ID")
 
-schema = 'gate_id:INT, passcard_id:INT, status_id:INT, direction_id:INT, timestamp:TIMESTAMP'
+schema = 'id:STRING, dm_gate_id:INT, dm_passcard_id:INT, dm_status_id:INT, dm_direction_id:INT, timestamp:TIMESTAMP, dm_date_id:INT, dm_time_id:STRING'
 
 topic_id = f"projects/{project_id}/topics/{os.environ.get('TOPIC_ID')}"
 
