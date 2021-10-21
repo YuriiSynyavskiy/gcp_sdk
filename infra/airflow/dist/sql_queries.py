@@ -1,4 +1,4 @@
-from dist.tables import (landing_location_table, staging_location_table, target_location_table, dept_table_name, 
+from dist.tables import (location_table_name, dept_table_name, 
                         tmp_dept_table_name, person_table_name, tmp_person_table_name)
 
 from airflow.models import Variable
@@ -94,29 +94,32 @@ sql_staging_to_target_dept = f"""
     """
 
 sql_landing_to_staging_location = f"""
-    INSERT INTO {Variable.get('DATASET_ID')}.{staging_location_table} 
-    SELECT b.hash_id, b.location_id, b.building_id, b.security_id, b.gate_id, b.room_number, b.floor, b.description 
-    FROM {Variable.get('DATASET_ID')}.{target_location_table} a right join ( 
-    select to_hex(md5(concat(building_id, security_id, gate_id, room_number, floor, description))) as hash_id, 
-    location_id, building_id, security_id, gate_id, room_number, floor, description
-    FROM {Variable.get('DATASET_ID')}.{landing_location_table} ) b on a.location_id = b.location_id 
+    BEGIN TRANSACTION;
+    delete from {Variable.get('STAGING_DATASET_ID')}.{location_table_name} where true; 
+
+    INSERT INTO {Variable.get('STAGING_DATASET_ID')}.{location_table_name} 
+    SELECT b.location_key, b.building_id, b.security_id, b.gate_id, b.room_number, b.floor, b.description, b.hash_id
+    FROM {Variable.get('DATASET_ID')}.{location_table_name} a right join ( 
+    select to_hex(md5(concat(run_id, building_id, security_id, gate_id, room_number, floor, description))) as hash_id, 
+    location_key, building_id, security_id, gate_id, room_number, floor, description
+    FROM {Variable.get('LANDING_DATASET_ID')}.{location_table_name} ) b on a.location_key = b.location_key 
     WHERE a.hash_id is null or a.flag='Y' and a.hash_id != b.hash_id;
+
+    COMMIT TRANSACTION;
     """
 
 sql_staging_to_target_location = f"""
     BEGIN TRANSACTION;
-    update {Variable.get('DATASET_ID')}.{target_location_table} t 
+    update {Variable.get('DATASET_ID')}.{location_table_name} t 
     set 
         t.effective_end_date = current_datetime(),
         t.flag='N'
-    from {Variable.get('DATASET_ID')}.{staging_location_table} a 
-    where a.location_id = t.location_id and t.flag='Y';
+    from {Variable.get('STAGING_DATASET_ID')}.{location_table_name} a 
+    where a.location_key = t.location_key and t.flag='Y';
 
-    insert into {Variable.get('DATASET_ID')}.{target_location_table} 
-    select hash_id, generate_uuid(), location_id, building_id, security_id, gate_id, room_number, floor, description, current_datetime(), datetime('9999-12-31T23:59:59'), 'Y' 
-    from {Variable.get('DATASET_ID')}.{staging_location_table};
+    insert into {Variable.get('DATASET_ID')}.{location_table_name} 
+    select generate_uuid(), location_key, building_id, security_id, gate_id, room_number, floor, description, current_datetime(), datetime('9999-12-31T23:59:59'), 'Y', hash_id
+    from {Variable.get('STAGING_DATASET_ID')}.{location_table_name};
 
-    delete from {Variable.get('DATASET_ID')}.{staging_location_table} where true; 
-    delete from {Variable.get('DATASET_ID')}.{landing_location_table} where true; 
     COMMIT TRANSACTION;
     """
