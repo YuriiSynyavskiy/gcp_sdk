@@ -2,12 +2,24 @@ import os
 import csv
 import random
 import argparse
-from dotenv import load_dotenv
-# from google.cloud import storage
+from google.cloud import storage
 from datetime import datetime
 
-HEADER = ['id', 'building_id', 'security_id', 'gate_id',
+HEADER = ['run_id', 'id', 'building_id', 'security_id', 'gate_id',
               'room_number', 'floor', 'description']
+FILE_PATH = f'locations_{str(datetime.timestamp(datetime.now())).split(".")[0]}.csv'
+
+
+def upload_to_bucket(blob_name, bucket_name):
+    """ Upload data to a bucket"""
+
+    client = storage.Client.from_service_account_json(json_credentials_path='/home/airflow/gcs/dags/data_generating/storage.json')
+
+    # Creating bucket object
+    bucket = client.get_bucket(bucket_name)
+    
+    object_name_in_gcs_bucket = bucket.blob(blob_name)
+    object_name_in_gcs_bucket.upload_from_filename(FILE_PATH)
 
 
 def generate_room_number():
@@ -21,26 +33,29 @@ def generate_description():
     return random.choice(descriptions)
 
 
-def create_data(file_path):
-    with open(file_path, 'w', newline='') as f:
+def create_data(**kwargs):
+    bucket_name = 'edu-passage-bucket'
+    blob_name = f'locations/{FILE_PATH}'
+    with open(FILE_PATH, 'w', newline='') as f:
         location_writer = csv.DictWriter(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, 
                                         fieldnames=HEADER)
         location_writer.writeheader()
         list_of_dict = []
-        for i in range(1,101):
+        for i in range(1,51):
             room, floor = generate_room_number()
-            result = {"id": str(i), "building_id": random.randint(1,20), 
-                                            "security_id": random.randint(1,10), "gate_id": random.randint(1,50), 
-                                            "room_number": room ,"floor": floor, "description": generate_description()}
+            result = {"run_id": kwargs['dag_run'].run_id, "id": str(i), "building_id": random.randint(1,2), 
+                      "security_id": random.randint(1,10), "gate_id": random.randint(1,50), 
+                      "room_number": room ,"floor": floor, "description": generate_description()}
             list_of_dict.append(result)
         location_writer.writerows(list_of_dict)
+    upload_to_bucket(blob_name, bucket_name)
 
 
-def update_data(file_path):
+def update_data():
     try:
-        with open(file_path, 'r') as f_r:
+        with open(FILE_PATH, 'r') as f_r:
             location_reader = csv.reader(f_r, delimiter=',', quotechar='"')
-            updated_file_name = f"locations_{args.file_path.split('_')[-1].split('.')[0]}_updated_{str(datetime.timestamp(datetime.now())).split('.')[0]}.csv"
+            updated_file_name = f"locations_{FILE_PATH.split('_')[-1].split('.')[0]}_updated_{str(datetime.timestamp(datetime.now())).split('.')[0]}.csv"
             with open(updated_file_name, 'w') as f_w:
                 location_writer = csv.writer(f_w, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
                 location_writer.writerow(HEADER)
@@ -51,45 +66,23 @@ def update_data(file_path):
                         description = generate_description()
                         choice = random.randint(1,7)
                         # Change building_id
-                        if choice == 1:  
+                        if choice == 2:  
                             row[1] = random.randint(1,20)
                         # Change security_id
-                        elif choice == 2:            
+                        elif choice == 3:            
                             row[2] = random.randint(1,10)
                         # Change gate_id
-                        elif choice == 3:            
+                        elif choice == 4:            
                             row[3] = random.randint(1,50)
                         # Change room_number
-                        elif choice == 4:
+                        elif choice == 5:
                             row[4] = room
                         # Change floor
-                        elif choice == 5:
+                        elif choice == 6:
                             row[5] = floor
                         # Change description
-                        elif choice == 6:
+                        elif choice == 7:
                             row[6] = description
                     location_writer.writerow(row)
     except FileNotFoundError:
         print("Incorrect file name!")
-
-
-def main(type, file_path, upload):
-    if type == 'create':
-        create_data(file_path)
-    else:
-        update_data(file_path)
-
-
-if __name__=="__main__":
-    load_dotenv()
-
-    parser = argparse.ArgumentParser(description="Generate locations data")
-    parser.add_argument('--type', choices=['create', 'update'], type=str, default='create')
-    parser.add_argument('--file_path', type=str, help='Path for file to update', default=f'locations_{str(datetime.timestamp(datetime.now())).split(".")[0]}.csv')
-    parser.add_argument('--upload', choices=[True, False], type=bool, help='Upload file to bucket')
-
-    args = parser.parse_args()
-    type = args.type
-    file_path = args.file_path
-    upload = args.upload
-    main(type, file_path, upload)
