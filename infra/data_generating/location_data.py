@@ -1,25 +1,23 @@
 import os
+import re
 import csv
 import random
-import argparse
 from google.cloud import storage
 from datetime import datetime
 
-HEADER = ['run_id', 'id', 'building_id', 'security_id', 'gate_id',
+CLIENT = storage.Client.from_service_account_json(json_credentials_path=f"/home/airflow/gcs/dags/data_generating/storage.json")
+HEADER = ['id', 'building_id', 'security_id', 'gate_id',
               'room_number', 'floor', 'description']
 FILE_PATH = f'locations_{str(datetime.timestamp(datetime.now())).split(".")[0]}.csv'
+BUCKET_NAME = 'edu-passage-bucket'
+BLOB_NAME = f'locations/{FILE_PATH}'
 
-
-def upload_to_bucket(blob_name, bucket_name):
+def upload_to_bucket(file_path):
     """ Upload data to a bucket"""
-
-    client = storage.Client.from_service_account_json(json_credentials_path='/home/airflow/gcs/dags/data_generating/storage.json')
-
-    # Creating bucket object
-    bucket = client.get_bucket(bucket_name)
+    bucket = CLIENT.get_bucket(BUCKET_NAME)
     
-    object_name_in_gcs_bucket = bucket.blob(blob_name)
-    object_name_in_gcs_bucket.upload_from_filename(FILE_PATH)
+    object_name_in_gcs_bucket = bucket.blob(BLOB_NAME)
+    object_name_in_gcs_bucket.upload_from_filename(file_path)
 
 
 def generate_room_number():
@@ -33,56 +31,56 @@ def generate_description():
     return random.choice(descriptions)
 
 
-def create_data(**kwargs):
-    bucket_name = 'edu-passage-bucket'
-    blob_name = f'locations/{FILE_PATH}'
+def create_data():
     with open(FILE_PATH, 'w', newline='') as f:
         location_writer = csv.DictWriter(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, 
                                         fieldnames=HEADER)
         location_writer.writeheader()
         list_of_dict = []
-        for i in range(1,51):
+        for i in range(1,21):
             room, floor = generate_room_number()
-            result = {"run_id": kwargs['dag_run'].run_id, "id": str(i), "building_id": random.randint(1,2), 
+            result = {"id": str(i), "building_id": random.randint(1,2), 
                       "security_id": random.randint(1,10), "gate_id": random.randint(1,50), 
                       "room_number": room ,"floor": floor, "description": generate_description()}
             list_of_dict.append(result)
         location_writer.writerows(list_of_dict)
-    upload_to_bucket(blob_name, bucket_name)
+    file_name = [filename for filename in os.listdir('.') if filename.startswith("locations")][0]
+    upload_to_bucket(file_name)
+    os.remove(file_name)
 
 
-def update_data():
-    try:
-        with open(FILE_PATH, 'r') as f_r:
-            location_reader = csv.reader(f_r, delimiter=',', quotechar='"')
-            updated_file_name = f"locations_{FILE_PATH.split('_')[-1].split('.')[0]}_updated_{str(datetime.timestamp(datetime.now())).split('.')[0]}.csv"
-            with open(updated_file_name, 'w') as f_w:
-                location_writer = csv.writer(f_w, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-                location_writer.writerow(HEADER)
-                skip_header = next(location_reader)
-                for row in location_reader:
-                    if random.random() < 0.1:
-                        room, floor = generate_room_number()
-                        description = generate_description()
-                        choice = random.randint(1,7)
-                        # Change building_id
-                        if choice == 2:  
-                            row[1] = random.randint(1,20)
-                        # Change security_id
-                        elif choice == 3:            
-                            row[2] = random.randint(1,10)
-                        # Change gate_id
-                        elif choice == 4:            
-                            row[3] = random.randint(1,50)
-                        # Change room_number
-                        elif choice == 5:
-                            row[4] = room
-                        # Change floor
-                        elif choice == 6:
-                            row[5] = floor
-                        # Change description
-                        elif choice == 7:
-                            row[6] = description
-                    location_writer.writerow(row)
-    except FileNotFoundError:
-        print("Incorrect file name!")
+def remove_file_from_gcs(blob_name):
+    bucket = CLIENT.get_bucket(BUCKET_NAME)
+    blob = bucket.blob(blob_name)
+    print(blob)
+    blob.delete()
+
+
+def add_run_id(**kwargs):
+    list_of_blobs = []
+    for blob in CLIENT.list_blobs(BUCKET_NAME, prefix='locations'):
+        list_of_blobs.append(blob)
+    blob = re.search(r'locations/locations.*\.csv', str(list_of_blobs[1]))
+    blob = blob.group()
+    bucket = CLIENT.get_bucket(BUCKET_NAME)
+    get_blob_name = bucket.blob(blob)
+    download_blob = get_blob_name.download_as_string().decode("utf-8")
+    with open(FILE_PATH, 'w') as f:
+        lns = download_blob.split('\n')
+        for item in lns:
+            f.write(item)
+    file_name = [filename for filename in os.listdir('.') if filename.startswith("locations")][0]
+    new_file_name = f'new_{file_name}'
+    with open(file_name, 'r') as read_obj, \
+            open(new_file_name, 'w', newline='') as write_obj:
+        csv_reader = csv.reader(read_obj)
+        csv_writer = csv.writer(write_obj)
+        for row in csv_reader:
+            transform_row = lambda row, line_num: row.append('run_id') if line_num == 1 else row.append(
+                       kwargs['dag_run'].run_id)
+            transform_row(row, csv_reader.line_num)
+            csv_writer.writerow(row)
+    upload_to_bucket(new_file_name)
+    os.remove(new_file_name)
+    os.remove(file_name)
+    remove_file_from_gcs(blob)
