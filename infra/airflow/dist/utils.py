@@ -50,7 +50,7 @@ def check_more_files(ti, **kwargs):
              'message': f"{datetime.now(tz=None)} There are one or more objects in {kwargs['namespace']}/ folder. Dag will run again automatically",
              'run_id': kwargs['dag_run'].run_id   
             }, severity="INFO")
-        return kwargs['task_id']
+        return kwargs.get('task_id', None) or 'rerun_dag'
     logger.log_struct({
              'message': f"{datetime.now(tz=None)} All objects in {kwargs['namespace']}/ folder was processed",
              'run_id': kwargs['dag_run'].run_id   
