@@ -50,49 +50,9 @@ def check_more_files(ti, **kwargs):
              'message': f"{datetime.now(tz=None)} There are one or more objects in {kwargs['namespace']}/ folder. Dag will run again automatically",
              'run_id': kwargs['dag_run'].run_id   
             }, severity="INFO")
-        return 'rerun_dag'
+        return kwargs['task_id']
     logger.log_struct({
              'message': f"{datetime.now(tz=None)} All objects in {kwargs['namespace']}/ folder was processed",
              'run_id': kwargs['dag_run'].run_id   
             }, severity="INFO")
     return 'end_of_job'
-
-
-def check_file(ti, **kwargs):
-    logger = get_logger(kwargs['LOG_NAME'])
-    object_for_processing = ti.xcom_pull(task_ids='check_stream_state_task')
-    if object_for_processing:
-        logger.log_struct({
-            'message': f"{datetime.now(tz=None)} Detected object {object_for_processing} for processing in {kwargs['namespace']} job {kwargs['dag_run'].run_id}",
-            'run_id': kwargs['dag_run'].run_id,
-            'object_for_processing': object_for_processing
-        }, severity="INFO")
-        return 'gcs_to_bigquery'
-    logger.log_struct({
-        'message': f"{datetime.now(tz=None)} Nothing to process for {kwargs['namespace']} during job {kwargs['dag_run'].run_id}",
-        'run_id': kwargs['dag_run'].run_id
-    }, severity="WARNING")
-    return 'nothing_to_process'
-
-
-def check_recursive(ti, **kwargs):
-    logger = get_logger(kwargs['LOG_NAME'])
-    rerun_dag = ti.xcom_pull(task_ids='check_stream_state_task', key='repeat')
-    logger.log_struct({
-        'message': f"{datetime.now(tz=None)} Processed object {kwargs['source_object']} was successfully moved to {kwargs['destination_object']}",
-        'run_id': kwargs['dag_run'].run_id,
-        'source_object': kwargs['source_object'],
-        'destination_object': kwargs['destination_object'],
-        'namespace': kwargs['namespace']
-    }, severity="INFO")
-    if rerun_dag:
-        logger.log_struct({
-             'message': f"{datetime.now(tz=None)} There are one or more objects in {kwargs['namespace']}/ folder. Dag will run again automatically",
-             'run_id': kwargs['dag_run'].run_id   
-            }, severity="INFO")
-        return 'execute_recursive_call_task'
-    logger.log_struct({
-             'message': f"{datetime.now(tz=None)} All objects in {kwargs['namespace']}/ folder was processed",
-             'run_id': kwargs['dag_run'].run_id   
-            }, severity="INFO")
-    return 'skip_recursive_call'
