@@ -25,13 +25,11 @@ def create_landing_schema(dataset_id, table_name):
         :param: table_name
     """
     tables = check_table_exists(dataset_id)
-    print(tables)
     if table_name in tables:
         print(f"Table {table_name} already exists")
     else:
         query = f"""
             CREATE TABLE {dataset_id}.{table_name}(
-                run_id STRING,
                 location_key STRING not null,
                 building_id STRING,
                 security_id STRING,
@@ -39,9 +37,9 @@ def create_landing_schema(dataset_id, table_name):
                 room_number INT,
                 floor INT,
                 description STRING,
+                run_id STRING
             );
         """
-        print(query)
         client.query(query) 
         print(f"Table {table_name} was successfully created in {dataset_id} schema.")
 
