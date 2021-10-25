@@ -29,13 +29,10 @@ def create_landing_schema(dataset_id, table_name):
     else:
         query = f"""
             CREATE TABLE {dataset_id}.{table_name}(
-                location_key STRING not null,
-                building_id STRING,
-                security_id STRING,
-                gate_id STRING,
-                room_number INT,
-                floor INT,
-                description STRING,
+                gate_key STRING not null,
+                contact_information STRING,
+                state STRING,
+                throughput STRING,
                 run_id STRING
             );
         """
@@ -55,13 +52,10 @@ def create_staging_schema(dataset_id, table_name):
     else:
         query = f"""
                 CREATE TABLE {dataset_id}.{table_name}(
-                    location_key STRING not null,
-                    building_id STRING,
-                    security_id STRING,
-                    gate_id STRING,
-                    room_number INT,
-                    floor INT,
-                    description STRING,
+                    gate_key STRING not null,
+                    contact_information STRING,
+                    state STRING,
+                    throughput STRING,
                     hash_id STRING not null
                 );
             """
@@ -81,14 +75,11 @@ def create_target_schema(dataset_id, table_name):
     else:
         query = f"""
             CREATE TABLE {dataset_id}.{table_name}(
-                dm_location_id STRING not null,
-                location_key STRING not null,
-                dm_building_id STRING,
-                dm_security_id STRING,
-                dm_gate_id STRING,
-                room_number INT,
-                floor INT,
-                description STRING,
+                dm_gate_id STRING not null,
+                gate_key STRING not null,
+                contact_information STRING,
+                state STRING,
+                throughput STRING,
                 effective_start_date DATETIME,
                 effective_end_date DATETIME,
                 flag STRING,
@@ -108,7 +99,7 @@ if __name__ == "__main__":
     landing_dataset_id = os.environ.get("LANDING_DATASET_ID")
     staging_dataset_id = os.environ.get("STAGING_DATASET_ID")
 
-    table_name = "dm_location"
+    table_name = "dm_gate"
 
     create_landing_schema(landing_dataset_id, table_name)
     create_staging_schema(staging_dataset_id, table_name)
