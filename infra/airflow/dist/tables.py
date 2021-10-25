@@ -5,3 +5,4 @@ tmp_dept_table_name = 'tmp_dm_department'
 dept_table_name = 'dm_department'
 
 location_table_name = 'dm_location'
+gate_table_name = 'dm_gate'

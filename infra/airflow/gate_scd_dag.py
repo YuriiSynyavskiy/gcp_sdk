@@ -11,20 +11,19 @@ from airflow.contrib.operators.gcs_to_bq import GCSToBigQueryOperator
 from airflow.contrib.operators.bigquery_operator import BigQueryOperator
 from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.providers.google.cloud.transfers.gcs_to_gcs import GCSToGCSOperator
-from dist.sql_queries import sql_landing_to_staging_location, sql_staging_to_target_location
+from dist.sql_queries import sql_landing_to_staging_gate, sql_staging_to_target_gate
 from dist.utils import define_file, check_file_existing, check_more_files
-from data_generating.location_data import create_data, add_run_id
+from data_generating.gate_data import create_data, add_run_id
 
-LOG_NAME = 'location-dag'
+LOG_NAME = 'gate-dag'
 logger = get_logger(LOG_NAME)
 
-
 with airflow.DAG(
-        'location_scd_dag',
+        'gate_scd_dag',
         start_date=datetime.datetime(2021, 1, 1),
         # Not scheduled, trigger only
         schedule_interval=None) as dag:
-
+        
     create_data_task = PythonOperator(
         task_id='create_data_task',
         python_callable=create_data,
@@ -34,14 +33,14 @@ with airflow.DAG(
     define_file_for_uploading = PythonOperator(
         task_id='define_file_for_uploading',
         python_callable=define_file,
-        op_kwargs={'path': 'locations/'},
+        op_kwargs={'path': 'gates/'},
         dag=dag,
     )
 
     check_stream_state_task = BranchPythonOperator(
         task_id='check_stream_state',
         python_callable=check_file_existing,
-        op_kwargs={'namespace': 'location', 'LOG_NAME': LOG_NAME},
+        op_kwargs={'namespace': 'gate', 'LOG_NAME': LOG_NAME},
         dag=dag,
     )
 
@@ -55,17 +54,14 @@ with airflow.DAG(
         bucket=Variable.get("BUCKET_ID"),
         source_objects=[
             "{{ ti.xcom_pull(task_ids='define_file_for_uploading')}}"],
-        destination_project_dataset_table=f"{Variable.get('LANDING_DATASET_ID')}.{tables.location_table_name}",
+        destination_project_dataset_table=f"{Variable.get('LANDING_DATASET_ID')}.{tables.gate_table_name}",
         write_disposition='WRITE_TRUNCATE',
         skip_leading_rows=1,
         schema_fields=[
-            {'name': 'location_key', 'type': 'STRING', 'mode': 'REQUIRED'},
-            {'name': 'building_id', 'type': 'STRING', 'mode': 'NULLABLE'},
-            {'name': 'security_id', 'type': 'STRING', 'mode': 'NULLABLE'},
-            {'name': 'gate_id', 'type': 'STRING', 'mode': 'NULLABLE'},
-            {'name': 'room_number', 'type': 'INTEGER', 'mode': 'NULLABLE'},
-            {'name': 'floor', 'type': 'INTEGER', 'mode': 'NULLABLE'},
-            {'name': 'description', 'type': 'STRING', 'mode': 'NULLABLE'},
+            {'name': 'gate_key', 'type': 'STRING', 'mode': 'REQUIRED'},
+            {'name': 'contact_information', 'type': 'STRING', 'mode': 'NULLABLE'},
+            {'name': 'state', 'type': 'STRING', 'mode': 'NULLABLE'},
+            {'name': 'throughput', 'type': 'STRING', 'mode': 'NULLABLE'},
             {'name': 'run_id', 'type': 'STRING', 'mode': 'NULLABLE'}
         ],
         dag=dag,
@@ -78,7 +74,7 @@ with airflow.DAG(
         use_legacy_sql=False,
         retries=0,
         write_disposition='WRITE_TRUNCATE',
-        sql=sql_landing_to_staging_location
+        sql=sql_landing_to_staging_gate
     )
 
     staging_to_target = BigQueryOperator(
@@ -87,7 +83,7 @@ with airflow.DAG(
         location='US',
         use_legacy_sql=False,
         write_disposition='WRITE_APPEND',
-        sql=sql_staging_to_target_location
+        sql=sql_staging_to_target_gate
     )
 
     archive_file = GCSToGCSOperator(
@@ -114,7 +110,7 @@ with airflow.DAG(
 
     execute_recursive_call_task = TriggerDagRunOperator(
         task_id='execute_recursive_call_task',
-        trigger_dag_id='location_scd_dag',
+        trigger_dag_id='gate_scd_dag',
         dag=dag
     )
 
