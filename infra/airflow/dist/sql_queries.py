@@ -1,5 +1,5 @@
 from dist.tables import (location_table_name, dept_table_name, 
-                        tmp_dept_table_name, person_table_name, tmp_person_table_name)
+                        tmp_dept_table_name, person_table_name, tmp_person_table_name, gate_table_name)
 
 from airflow.models import Variable
 
@@ -120,6 +120,38 @@ sql_staging_to_target_location = f"""
     insert into {Variable.get('DATASET_ID')}.{location_table_name} 
     select generate_uuid(), location_key, building_id, security_id, gate_id, room_number, floor, description, current_datetime(), datetime('9999-12-31T23:59:59'), 'Y', hash_id
     from {Variable.get('STAGING_DATASET_ID')}.{location_table_name};
+
+    COMMIT TRANSACTION;
+    """
+
+sql_landing_to_staging_gate = f"""
+    BEGIN TRANSACTION;
+    delete from {Variable.get('STAGING_DATASET_ID')}.{gate_table_name} where true; 
+
+    INSERT INTO {Variable.get('STAGING_DATASET_ID')}.{gate_table_name} 
+    SELECT b.gate_key, b.contact_information, b.state, b.throughput, b.hash_id
+    FROM {Variable.get('DATASET_ID')}.{gate_table_name} a right join ( 
+    select to_hex(md5(concat(run_id, contact_information, state, throughput))) as hash_id, 
+    gate_key, contact_information, state, throughput
+    FROM {Variable.get('LANDING_DATASET_ID')}.{gate_table_name} ) b on a.gate_key = b.gate_key 
+    WHERE a.hash_id is null or a.flag='Y' and a.hash_id != b.hash_id;
+
+    COMMIT TRANSACTION;
+    """
+
+sql_staging_to_target_gate = f"""
+    BEGIN TRANSACTION;
+    update {Variable.get('DATASET_ID')}.{gate_table_name} t 
+    set 
+        t.effective_end_date = current_datetime(),
+        t.state='broken',
+        t.flag='N'
+    from {Variable.get('STAGING_DATASET_ID')}.{gate_table_name} a 
+    where a.gate_key = t.gate_key and t.state = 'working' and t.flag='Y';
+
+    insert into {Variable.get('DATASET_ID')}.{gate_table_name} 
+    select generate_uuid(), gate_key, contact_information, state, throughput, current_datetime(), datetime('9999-12-31T23:59:59'), 'Y', hash_id
+    from {Variable.get('STAGING_DATASET_ID')}.{gate_table_name};
 
     COMMIT TRANSACTION;
     """
