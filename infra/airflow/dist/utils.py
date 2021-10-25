@@ -52,7 +52,7 @@ def check_more_files(ti, **kwargs):
             }, severity="INFO")
         return kwargs.get('task_id', None) or 'rerun_dag'
     logger.log_struct({
-             'message': f"{datetime.now(tz=None)} All objects in {kwargs['namespace']}/ folder was processed",
+             'message': f"{datetime.now(tz=None)} All objects in {kwargs['namespace']}/ folder were processed",
              'run_id': kwargs['dag_run'].run_id   
             }, severity="INFO")
     return 'end_of_job'
