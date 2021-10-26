@@ -25,7 +25,7 @@ while True:
         "id": str(uuid.uuid4()),
         "dm_gate_key": randint(1,10),
         "dm_gate_id": "",
-        "dm_passcard_key": randint(1,10),
+        "dm_passcard_key": randint(1,9),
         "dm_passcard_id": "",
         "dm_status_id": randint(1,4),
         "dm_direction_id": randint(1,2),
@@ -39,7 +39,7 @@ while True:
     query_job = client.query(
         f"""SELECT dm_passcard_key 
             FROM {dataset_id}.{passcard_table_name} 
-            WHERE id = '{message['dm_passcard_key']}' and is_current = 'Y' """
+            WHERE id = '{message['dm_passcard_key']}' and is_current = true """
     )
 
     result = next(query_job.result())
@@ -52,7 +52,7 @@ while True:
     )
 
     result = next(query_job.result())
-    message["dm_gate_id"] = result.dm_passcard_key
+    message["dm_gate_id"] = result.dm_gate_id
 
     future = publisher.publish(topic_name, json.dumps(message).encode("utf-8"))
     future.result()
