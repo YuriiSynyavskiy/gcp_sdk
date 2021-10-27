@@ -40,7 +40,8 @@ def init():
         SchemaField('security_id', 'INTEGER', mode='REQUIRED'),
         SchemaField('start_date', 'INTEGER', mode='REQUIRED'),
         SchemaField('expires_at', 'INTEGER'),
-        SchemaField('source_id', 'STRING', mode='REQUIRED'),
+        SchemaField('hash', 'STRING', mode='REQUIRED'),
+        SchemaField('run_id', 'STRING', mode='REQUIRED'),
     ]
     target_schema = [
         SchemaField('dm_passcard_key', 'STRING', mode='REQUIRED'),
@@ -51,7 +52,7 @@ def init():
         SchemaField('expires_at', 'INTEGER', mode='REQUIRED'),
         SchemaField('effective_start_date', 'DATETIME', mode='NULLABLE'),
         SchemaField('effective_end_date', 'DATETIME', mode='NULLABLE'),
-        SchemaField('is_current', 'BOOLEAN', mode='REQUIRED'),
+        SchemaField('current_flag', 'STRING', mode='REQUIRED'),
         SchemaField('hash', 'STRING', mode='REQUIRED'),
     ]
 

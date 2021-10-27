@@ -1,6 +1,8 @@
+from datetime import datetime
+
 from airflow.exceptions import AirflowSkipException
 from dotenv import dotenv_values
-from sqlalchemy import MetaData, Table, create_engine, literal, select
+from sqlalchemy import MetaData, Table, create_engine, literal, select, text
 
 config = dotenv_values('.env')
 
@@ -24,9 +26,17 @@ def landing_success(context, **kwargs):
     print(f'Processed files: {processed_files}')
 
 
-def if_no_files(ti, **kwargs):
+def create_tmp_table_name(ti, **kwargs):
+    ts = str(datetime.today().replace(microsecond=0).timestamp())[0:-2]
+    name = '_'.join(['tmp', config.get('PASSCARD_TABLE_NAME'), ts])
+    ti.xcom_push('tmp_dm_passcard', name)
+
+
+def if_new_files(ti, **kwargs):
     if ti.xcom_pull(task_ids='get_new_files_from_storage'):
-        raise AirflowSkipException('There is no new files')
+        return True
+
+    raise AirflowSkipException('There is no new files')
 
 
 def landing_to_staging(landing_table_name, ti, **kwargs):
@@ -42,7 +52,17 @@ def landing_to_staging(landing_table_name, ti, **kwargs):
         autoload=True,
     )
 
-    _select = select([*landing_table.c, literal(ti.run_id)])
+    fields_for_hash = ','.join([
+        landing_table.c.person_id.name,
+        landing_table.c.security_id.name,
+        landing_table.c.start_date.name,
+        landing_table.c.expires_at.name,
+    ])
+
+    _select = select([
+        *landing_table.c,
+        text(f'to_hex(md5(concat({fields_for_hash})))'),
+        literal(ti.run_id)])
     _insert = staging_table.insert().from_select(staging_table.c, _select)
 
     query = _insert.compile()
