@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from subprocess import run
 from airflow.models.dag import BaseOperator
 from airflow.contrib.hooks.gcs_hook import GoogleCloudStorageHook
 from airflow.utils.decorators import apply_defaults
@@ -26,6 +27,7 @@ class LocalToGCSOperator(BaseOperator):
         delete=True,
         create_function=None,
         update_function=None,
+        run_id=False,
         logger=None,
         **kwargs
     ):
@@ -38,9 +40,13 @@ class LocalToGCSOperator(BaseOperator):
         self.create_data = create_function
         self.update_data = update_function
         self.logger = logger
+        self.run_id = run_id
         self.conn = GoogleCloudStorageHook()
 
     def execute(self, context):
+        if self.run_id:
+            self.previous_file = None
+
         if self.previous_file:
             self.download_file()
             if self.logger:
@@ -81,7 +87,8 @@ class LocalToGCSOperator(BaseOperator):
                 }, severity="INFO")
         
         os.remove(file_name)
-        os.remove(self.previous_file.split('/')[-1])
+        if self.previous_file:
+            os.remove(self.previous_file.split('/')[-1])
 
     def download_file(self, local_path=None):
 
