@@ -39,11 +39,14 @@ class LocalToGCSOperator(BaseOperator):
         self.create_data = create_function
         self.update_data = update_function
         self.logger = logger
-        self.run_id= run_id,
+        self.run_id = run_id,
         self.conn = GoogleCloudStorageHook()
 
     def execute(self, context):
-        if self.previous_file or self.run_id == False:
+        if self.run_id:
+            self.previous_file = None
+
+        if self.previous_file:
             self.download_file()
             if self.logger:
                 self.logger.log_struct({
@@ -62,8 +65,6 @@ class LocalToGCSOperator(BaseOperator):
                     'oldest_file': self.previous_file,
                     'new_file': file_name 
                 }, severity="INFO")
-            self.upload_file(file_name)
-            os.remove(self.previous_file.split('/')[-1])
         else:
             file_name = self.create_data()
             if self.logger:
@@ -73,8 +74,8 @@ class LocalToGCSOperator(BaseOperator):
                     'namespace': self.bucket_folder,
                     'new_file': file_name 
                 }, severity="INFO")
-            self.upload_file(file_name)
-            os.remove(file_name)
+
+        self.upload_file(file_name)
 
         if self.logger:
                 self.logger.log_struct({
@@ -83,6 +84,11 @@ class LocalToGCSOperator(BaseOperator):
                     'namespace': self.bucket_folder,
                     'new_file': file_name 
                 }, severity="INFO")
+        
+        os.remove(file_name)
+        if self.previous_file:
+            os.remove(self.previous_file.split('/')[-1])
+
 
     def download_file(self, local_path=None):
 
