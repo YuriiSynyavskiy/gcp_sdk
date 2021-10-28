@@ -5,12 +5,12 @@ import random
 from google.cloud import storage
 from datetime import datetime
 
-CLIENT = storage.Client.from_service_account_json(json_credentials_path=f"/home/airflow/gcs/dags/data_generating/storage.json")
+CLIENT = storage.Client.from_service_account_json(json_credentials_path="/home/airflow/gcs/dags/data_generating/storage.json")
 HEADER = ['id', 'building_id', 'security_id', 'gate_id',
               'room_number', 'floor', 'description']
-FILE_PATH = f'locations_{str(datetime.timestamp(datetime.now())).split(".")[0]}.csv'
+FILE_NAME = f'locations_{str(datetime.timestamp(datetime.now())).split(".")[0]}.csv'
 BUCKET_NAME = 'edu-passage-bucket'
-BLOB_NAME = f'locations/{FILE_PATH}'
+BLOB_NAME = f'locations/{FILE_NAME}'
 
 def upload_to_bucket(file_path):
     """ Upload data to a bucket"""
@@ -31,8 +31,9 @@ def generate_description():
     return random.choice(descriptions)
 
 
-def create_data():
-    with open(FILE_PATH, 'w', newline='') as f:
+def create_location_data():
+    file_name = f'locations_{str(datetime.timestamp(datetime.now())).split(".")[0]}.csv'
+    with open(file_name, 'w', newline='') as f:
         location_writer = csv.DictWriter(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL, 
                                         fieldnames=HEADER)
         location_writer.writeheader()
@@ -44,9 +45,7 @@ def create_data():
                       "room_number": room ,"floor": floor, "description": generate_description()}
             list_of_dict.append(result)
         location_writer.writerows(list_of_dict)
-    file_name = [filename for filename in os.listdir('.') if filename.startswith("locations")][0]
-    upload_to_bucket(file_name)
-    os.remove(file_name)
+    return file_name
 
 
 def remove_file_from_gcs(blob_name):
@@ -65,7 +64,7 @@ def add_run_id(**kwargs):
     bucket = CLIENT.get_bucket(BUCKET_NAME)
     get_blob_name = bucket.blob(blob)
     download_blob = get_blob_name.download_as_string().decode("utf-8")
-    with open(FILE_PATH, 'w') as f:
+    with open(FILE_NAME, 'w') as f:
         lns = download_blob.split('\n')
         for item in lns:
             f.write(item)

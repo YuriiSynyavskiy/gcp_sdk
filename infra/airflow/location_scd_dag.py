@@ -5,7 +5,6 @@ from dist import tables
 from datetime import datetime
 from dist.logger import get_logger
 from airflow.models import Variable
-from airflow.operators.dummy import DummyOperator
 from airflow.operators.dagrun_operator import TriggerDagRunOperator
 from airflow.contrib.operators.gcs_to_bq import GCSToBigQueryOperator
 from airflow.contrib.operators.bigquery_operator import BigQueryOperator
@@ -13,7 +12,7 @@ from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.providers.google.cloud.transfers.gcs_to_gcs import GCSToGCSOperator
 from dist.sql_queries import sql_landing_to_staging_location, sql_staging_to_target_location
 from dist.utils import define_file, check_file_existing, check_more_files, message_logging
-from data_generating.location_data import create_data, add_run_id
+from data_generating.location_data import add_run_id
 
 LOG_NAME = 'location-dag'
 logger = get_logger(LOG_NAME)
@@ -82,12 +81,6 @@ with airflow.DAG(
             f"{datetime.now(tz=None)} Error while loading file {{{{ ti.xcom_pull(task_ids='define_file_for_uploading')}}}} to \
             {Variable.get('DATASET_ID')}.{tables.location_table_name}. Job id - {{{{run_id}}}}"],
         trigger_rule='one_failed',
-        dag=dag
-    )
-
-    create_data_task = PythonOperator(
-        task_id='create_data_task',
-        python_callable=create_data,
         dag=dag
     )
 
@@ -181,21 +174,21 @@ with airflow.DAG(
         dag=dag
     )
 
-    create_data_task >> add_run_id_column_task >> define_file_for_uploading >> check_stream_state_task >> skip_recursive_call_task
+    add_run_id_column_task >> define_file_for_uploading >> check_stream_state_task >> skip_recursive_call_task
 
-    create_data_task >> add_run_id_column_task >> define_file_for_uploading >> check_stream_state_task >>  log_on_failure_file_to_landing >> skip_recursive_call_task
+    add_run_id_column_task >> define_file_for_uploading >> check_stream_state_task >>  log_on_failure_file_to_landing >> skip_recursive_call_task
 
-    create_data_task >> add_run_id_column_task >> define_file_for_uploading >> check_stream_state_task >> load_csv >> \
+    add_run_id_column_task >> define_file_for_uploading >> check_stream_state_task >> load_csv >> \
     log_on_success_file_to_landing >> landing_to_staging >> log_on_failure_file_to_staging >> skip_recursive_call_task
 
-    create_data_task >> add_run_id_column_task >> define_file_for_uploading >> check_stream_state_task >> load_csv >> \
+    add_run_id_column_task >> define_file_for_uploading >> check_stream_state_task >> load_csv >> \
     log_on_success_file_to_landing >> landing_to_staging >> log_on_success_file_to_staging >> staging_to_target >> \
     log_on_failure_file_to_target >> skip_recursive_call_task
 
-    create_data_task >> add_run_id_column_task >> define_file_for_uploading >> check_stream_state_task >> load_csv >> \
+    add_run_id_column_task >> define_file_for_uploading >> check_stream_state_task >> load_csv >> \
     log_on_success_file_to_landing >> landing_to_staging >> log_on_success_file_to_staging >> staging_to_target >> \
     log_on_success_file_to_target >> archive_file >> check_recursive_task >> skip_recursive_call_task
 
-    create_data_task >> add_run_id_column_task >> define_file_for_uploading >> check_stream_state_task >> load_csv >> \
+    add_run_id_column_task >> define_file_for_uploading >> check_stream_state_task >> load_csv >> \
     log_on_success_file_to_landing >> landing_to_staging >> log_on_success_file_to_staging >> staging_to_target >> \
     log_on_success_file_to_target >> archive_file >> check_recursive_task >> execute_recursive_call_task

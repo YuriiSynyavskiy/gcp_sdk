@@ -9,8 +9,10 @@ from dist.utils import get_older_files, message_logging
 from dist.file_to_gcs import LocalToGCSOperator
 from data_generating.department_data import create_department_data, update_department_data
 from data_generating.person_data import create_person_data, update_person_data
-from dist.paths import (departments_folder, departments_archive_folder, 
-                        persons_folder, persons_archive_folder)
+from data_generating.location_data import create_location_data
+from data_generating.gate_data import create_gate_data
+from dist.paths import (departments_folder, departments_archive_folder, persons_folder, persons_archive_folder,
+                        locations_folder, gates_folder)
 
 
 LOG_NAME = 'generating-dag'
@@ -58,6 +60,26 @@ with airflow.DAG(
         dag=dag
     )
 
+    generate_location_data = LocalToGCSOperator(
+        task_id='generate_location_data',
+        bucket_name=Variable.get("BUCKET_ID"),
+        bucket_folder=locations_folder,
+        create_function=create_location_data,
+        logger=logger,
+        run_id=True,
+        dag=dag
+    )
+
+    generate_gate_data = LocalToGCSOperator(
+        task_id='generate_gate_data',
+        bucket_name=Variable.get("BUCKET_ID"),
+        bucket_folder=gates_folder,
+        create_function=create_gate_data,
+        logger=logger,
+        run_id=True,
+        dag=dag
+    )
+
     end_of_job = PythonOperator(
         task_id='end_of_job',
         python_callable=message_logging,
@@ -66,4 +88,5 @@ with airflow.DAG(
         dag=dag
     )
 
-    start_of_job >> define_file_to_process >> generate_department_data >> generate_person_data >> end_of_job
+    start_of_job >> define_file_to_process >> generate_department_data >> generate_person_data >> \
+    generate_location_data >> generate_gate_data >> end_of_job
