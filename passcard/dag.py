@@ -13,7 +13,7 @@ from airflow.providers.google.cloud.transfers.gcs_to_gcs import \
 from dotenv import dotenv_values
 
 from callbacks import create_tmp_table_name, if_new_files, landing_success, \
-    landing_to_staging, log_new_files
+    landing_to_staging, log_new_files, staging_to_target
 
 config = dotenv_values('.env')
 
@@ -48,8 +48,8 @@ with airflow.DAG(
     transfer_data_from_storage_to_bq = GCSToBigQueryOperator(
         task_id='transfer_data_from_storage_to_bq',
         schema_fields=[
-            {'name': 'passcard_key', 'type': 'STRING', 'mode': 'REQUIRED'},
-            {'name': 'person_id', 'type': 'INTEGER', 'mode': 'REQUIRED'},
+            {'name': 'passcard_key', 'type': 'INTEGER', 'mode': 'REQUIRED'},
+            {'name': 'person_id', 'type': 'STRING', 'mode': 'REQUIRED'},
             {'name': 'security_id', 'type': 'INTEGER', 'mode': 'REQUIRED'},
             {'name': 'start_date', 'type': 'INTEGER', 'mode': 'REQUIRED'},
             {'name': 'expires_at', 'type': 'INTEGER'},
@@ -65,8 +65,8 @@ with airflow.DAG(
         external_table=True,
     )
 
-    add_hash_and_run_id_to_records = PythonOperator(
-        task_id='add_hash_and_run_id_to_records',
+    add_hash_to_records = PythonOperator(
+        task_id='add_hash_to_records',
         python_callable=landing_to_staging,
         op_kwargs={
             'landing_table_name': '{{ ti.xcom_pull(key="tmp_dm_passcard") }}',
@@ -91,8 +91,9 @@ with airflow.DAG(
         ]),
     )
 
-    enrich_data_and_put_on_dwh = DummyOperator(
+    enrich_data_and_put_on_dwh = PythonOperator(
         task_id='enrich_data_and_put_on_dwh',
+        python_callable=staging_to_target,
     )
 
     finish = DummyOperator(task_id='finish')
@@ -101,5 +102,5 @@ with airflow.DAG(
 
     get_new_files_from_storage >> if_new_files >> \
         create_landing_table_name >> transfer_data_from_storage_to_bq >> \
-        add_hash_and_run_id_to_records >> archive_processed_files >> \
+        add_hash_to_records >> archive_processed_files >> \
         drop_landing_tmp_table >> enrich_data_and_put_on_dwh >> finish

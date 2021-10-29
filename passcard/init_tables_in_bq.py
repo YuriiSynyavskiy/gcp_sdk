@@ -35,19 +35,18 @@ def create_passcard_table_in_dataset(
 
 def init():
     staging_schema = [
-        SchemaField('passcard_key', 'STRING', mode='REQUIRED'),
-        SchemaField('person_id', 'INTEGER', mode='REQUIRED'),
+        SchemaField('id', 'INTEGER', mode='REQUIRED'),
+        SchemaField('person_id', 'STRING', mode='REQUIRED'),
         SchemaField('security_id', 'INTEGER', mode='REQUIRED'),
         SchemaField('start_date', 'INTEGER', mode='REQUIRED'),
         SchemaField('expires_at', 'INTEGER'),
         SchemaField('hash', 'STRING', mode='REQUIRED'),
-        SchemaField('run_id', 'STRING', mode='REQUIRED'),
     ]
     target_schema = [
-        SchemaField('dm_passcard_key', 'STRING', mode='REQUIRED'),
-        SchemaField('id', 'STRING', mode='REQUIRED'),
+        SchemaField('passcard_key', 'INTEGER', mode='REQUIRED'),
+        SchemaField('dm_passcard_id', 'STRING', mode='REQUIRED'),
         SchemaField('dm_person_id', 'STRING', mode='REQUIRED'),
-        SchemaField('dm_security_id', 'STRING', mode='REQUIRED'),
+        SchemaField('dm_security_id', 'INTEGER', mode='REQUIRED'),
         SchemaField('start_date', 'INTEGER', mode='REQUIRED'),
         SchemaField('expires_at', 'INTEGER', mode='REQUIRED'),
         SchemaField('effective_start_date', 'DATETIME', mode='NULLABLE'),

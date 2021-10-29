@@ -1,6 +1,5 @@
 import csv
 import random
-import uuid
 from collections import namedtuple
 from datetime import datetime, timedelta
 from typing import List
@@ -11,7 +10,7 @@ from google.oauth2 import service_account
 
 pattern = '%Y%m%d'
 
-START_DATE = datetime.today() - timedelta(days=1)  # datetime.strptime('20000101', pattern)
+START_DATE = datetime.today() - timedelta(days=1)
 END_DATE = datetime.strptime('21000101', pattern)
 STORAGE_FOLDER = 'passcards'
 
@@ -43,7 +42,7 @@ def get_n_random_passcards(n: int):
     for _ in range(0, n):
         passcards.append(
             Passcard(
-                uuid.uuid4(),
+                random.randint(1, 100),
                 random.randint(1, 10),
                 random.randint(1, 10),
                 *map(int, get_random_date_range(START_DATE, END_DATE)),
