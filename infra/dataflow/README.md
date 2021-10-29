@@ -8,6 +8,7 @@ https://towardsdatascience.com/lets-build-a-streaming-data-pipeline-e873d671fc57
 
 Running of job:
 
+"""
 export PROJECT_ID=
 
 export BUCKET_ID=
@@ -20,3 +21,6 @@ python streaming.py \
 --region europe-west6
 --job_name streaming_pub_sub_to_bigquery
 --streaming
+"""
+
+python main.py
