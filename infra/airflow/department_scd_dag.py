@@ -76,7 +76,6 @@ with airflow.DAG(
         python_callable=message_logging,
         op_args=[logger, 'INFO', 
             f"{datetime.now(tz=None)} Successfuly loaded data from {{{{ ti.xcom_pull(task_ids='define_file_for_uploading')}}}} to {Variable.get('LANDING_DATASET_ID')}.{tables.tmp_dept_table_name}. Job id - {{{{run_id}}}}"],
-        trigger_rule='none_failed',
         dag=dag
     )
 
@@ -96,7 +95,6 @@ with airflow.DAG(
         use_legacy_sql=False,
         write_disposition='WRITE_APPEND',
         retries=0,
-        trigger_rule='none_failed',
         sql=sql_temporary_to_landing_dept
     )
 
@@ -105,7 +103,6 @@ with airflow.DAG(
         python_callable=message_logging,
         op_args=[logger, 'INFO', 
             f"{datetime.now(tz=None)} Successfuly loaded data from {Variable.get('LANDING_DATASET_ID')}.{tables.tmp_dept_table_name} to {Variable.get('LANDING_DATASET_ID')}.{tables.dept_table_name}. Job id - {{{{run_id}}}}"],
-        trigger_rule='none_failed',
         dag=dag
     )
 
@@ -123,7 +120,6 @@ with airflow.DAG(
         task_id='landing_to_staging',
         location='US',
         use_legacy_sql=False,
-        trigger_rule='none_failed',
         retries=0,
         write_disposition='WRITE_TRUNCATE',
         sql=sql_landing_to_staging_dept
@@ -134,7 +130,6 @@ with airflow.DAG(
         python_callable=message_logging,
         op_args=[logger, 'INFO', 
             f"{datetime.now(tz=None)} Successfuly loaded data from {Variable.get('LANDING_DATASET_ID')}.{tables.dept_table_name} to {Variable.get('STAGING_DATASET_ID')}.{tables.dept_table_name}. Job id - {{{{run_id}}}}"],
-        trigger_rule='none_failed',
         dag=dag
     )
 
@@ -152,7 +147,6 @@ with airflow.DAG(
         task_id='staging_to_target',
         location='US',
         use_legacy_sql=False,
-        trigger_rule='none_failed',
         retries=0,
         write_disposition='WRITE_APPEND',
         sql=sql_staging_to_target_dept
@@ -163,7 +157,6 @@ with airflow.DAG(
         python_callable=message_logging,
         op_args=[logger, 'INFO', 
             f"{datetime.now(tz=None)} Successfuly loaded data from {Variable.get('STAGING_DATASET_ID')}.{tables.dept_table_name} to {Variable.get('DATASET_ID')}.{tables.dept_table_name}. Job id - {{{{run_id}}}}"],
-        trigger_rule='none_failed',
         dag=dag
     )
 

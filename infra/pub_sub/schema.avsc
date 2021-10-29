@@ -7,12 +7,20 @@
      "type": "string"
    },
    {
+     "name" : "dm_gate_key",
+     "type" : "int"
+   },
+   {
      "name" : "dm_gate_id",
+     "type" : "string"
+   },
+   {
+     "name" : "dm_passcard_key",
      "type" : "int"
    },
    {
      "name" : "dm_passcard_id",
-     "type" : "int"
+     "type" : "string"
    },
    {
      "name" : "dm_status_id",

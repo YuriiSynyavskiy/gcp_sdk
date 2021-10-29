@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from sys import prefix
 from dist.logger import get_logger
 from airflow.models import Variable
 from airflow.contrib.hooks.gcs_hook import GoogleCloudStorageHook
@@ -52,7 +53,19 @@ def check_more_files(ti, **kwargs):
             }, severity="INFO")
         return kwargs.get('task_id', None) or 'rerun_dag'
     logger.log_struct({
-             'message': f"{datetime.now(tz=None)} All objects in {kwargs['namespace']}/ folder was processed",
+             'message': f"{datetime.now(tz=None)} All objects in {kwargs['namespace']}/ folder were processed",
              'run_id': kwargs['dag_run'].run_id   
             }, severity="INFO")
     return 'end_of_job'
+
+def get_older_files(ti, **kwargs):
+    conn = GoogleCloudStorageHook()
+    prefix = 'processed_{0}'
+
+    dimensions = ['gates', 'locations', 'persons', 'passcards', 'departments']
+    for dim in dimensions:
+        files = conn.list(Variable.get("BUCKET_ID"), prefix=prefix.format(dim), delimiter='.csv')
+        files.sort(key=lambda file_name: file_name.split('_')[-1], reverse=True) # sort by date
+        if len(files):
+            ti.xcom_push(key=prefix.format(dim), value=files[0])
+    return

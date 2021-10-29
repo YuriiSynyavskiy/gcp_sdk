@@ -27,8 +27,10 @@ else:
     query = f"""
         CREATE TABLE {dataset_id}.{passage_table}(
             id string not null,
-            dm_gate_id int not null,
-            dm_passcard_id int not null,
+            dm_gate_key int not null,
+            dm_gate_id string not null,
+            dm_passcard_key int not null,
+            dm_passcard_id string not null,
             dm_status_id int not null,
             dm_direction_id int not null, 
             timestamp timestamp not null,
