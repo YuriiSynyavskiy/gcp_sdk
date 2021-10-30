@@ -17,14 +17,14 @@ sql_landing_to_staging_person = f"""
     delete from {Variable.get('LANDING_DATASET_ID')}.{tmp_person_table_name} where true;
 
     INSERT INTO {Variable.get('STAGING_DATASET_ID')}.{person_table_name} 
-    SELECT b.person_key, b.department_id, b.position_id, b.name, b.surname, 
+    SELECT b.person_key, c.dm_department_id, b.position_id, b.name, b.surname, 
     b.salary, b.phone, b.start_date as start_date, b.end_date as end_date,
     b.hash_key 
     FROM {Variable.get('DATASET_ID')}.{person_table_name} a right join ( 
     select to_hex(md5(concat(department_id, position_id, name, surname, salary, phone, ifnull(format_date('%Y-%m-%d', end_date), '' )))) as hash_key, 
     person_key, department_id, position_id, name, surname, salary, phone, start_date, end_date, run_id 
     FROM {Variable.get('LANDING_DATASET_ID')}.{person_table_name} 
-    WHERE run_id = '{{{{run_id}}}}') b on a.person_key = b.person_key 
+    WHERE run_id = '{{{{run_id}}}}') b on a.person_key = b.person_key left join {Variable.get('DATASET_ID')}.{dept_table_name} c on b.department_id  = c.department_key and c.current_flag='Y' 
     WHERE a.hash_key is null or a.current_flag='Y' and a.hash_key != b.hash_key;
 
     COMMIT TRANSACTION;
