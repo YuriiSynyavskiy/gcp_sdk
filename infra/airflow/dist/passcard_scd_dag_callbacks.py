@@ -2,7 +2,8 @@ from datetime import datetime
 
 from airflow.exceptions import AirflowSkipException
 from dotenv import dotenv_values
-from sqlalchemy import MetaData, Table, create_engine, func, literal, select, text, column
+from sqlalchemy import MetaData, Table, column, create_engine, func, join, \
+    literal, select, text
 from sqlalchemy.sql.functions import concat
 
 config = dotenv_values('.env')
@@ -27,7 +28,7 @@ def landing_success(context, **kwargs):
     print(f'Processed files: {processed_files}')
 
 
-def create_tmp_table_name(ti, **kwargs):
+def generate_tmp_table_name(ti, **kwargs):
     ts = str(datetime.today().replace(microsecond=0).timestamp())[0:-2]
     name = '_'.join(['tmp', config.get('PASSCARD_TABLE_NAME'), ts])
     ti.xcom_push('tmp_dm_passcard', name)
@@ -66,34 +67,70 @@ def landing_to_staging(landing_table_name, ti, **kwargs):
         landing_table.c.expires_at,
     ]
     _hash = func.to_hex(func.md5(concat(*columns_for_hash))).label('hash')
-    _select = (
-        select([
-            *landing_table.c,
+
+    cte = select(
+        [
+            landing_table.c.id,
+            landing_table.c.person_id,
+            landing_table.c.security_id,
+            landing_table.c.start_date,
+            landing_table.c.expires_at,
+            target_table.c.hash.label('target_hash'),
             _hash,
-        ]).where(
-            (
-                (target_table.c.passcard_key == landing_table.c.passcard_key)
-                & (target_table.c.hash != column('hash'))
-            )
+        ]
+    ).select_from(
+        join(
+            landing_table,
+            target_table,
+            landing_table.c.id == target_table.c.passcard_key,
+            ),
+    ).cte()
+
+    select_updated = select([
+        cte.c.id,
+        cte.c.person_id,
+        cte.c.security_id,
+        cte.c.start_date,
+        cte.c.expires_at,
+        cte.c.hash,
+    ]).select_from(cte).where(
+        column('hash') != column('target_hash'),
         )
-    )  # TODO: fix the query (the same data duplicates)
 
-    with engine.connect() as conn:
-        rows = conn.execute(_select)
+    # TODO: find a more elegant approach ↓
+    # BigQuery executes only INSERT INTO table WITH cte AS ...,
+    # not WITH cte AS (...) INSERT ...
+    insert_updated = text(
+        f'INSERT INTO '
+        f'{config.get("DATASET_STAGING_ID")}.'
+        f'{config.get("PASSCARD_TABLE_NAME")} '
+        f'{str(select_updated)}'
+    )
 
-    if not rows.fetchall():
-        _select = select([
-            *landing_table.c,
-            _hash,
-        ])
+    select_new = select([
+        *landing_table.c,
+        _hash,
+    ]).where(
+        landing_table.c.id.notin_(
+            select([target_table.c.passcard_key])
+        )
+    )
 
-    _insert = staging_table.insert().from_select(staging_table.c, _select)
+    insert_new = (
+        staging_table
+        .insert()
+        .from_select(
+            staging_table.c,
+            select_new,
+        )
+    )
 
     with engine.connect() as conn:
         conn.execute(f'TRUNCATE TABLE '
                      f'{config.get("DATASET_STAGING_ID")}.'
                      f'{config.get("PASSCARD_TABLE_NAME")}')
-        conn.execute(_insert)
+        conn.execute(insert_updated)
+        conn.execute(insert_new)
 
 
 def staging_to_target(ti, **kwargs):

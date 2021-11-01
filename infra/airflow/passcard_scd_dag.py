@@ -12,17 +12,18 @@ from airflow.providers.google.cloud.transfers.gcs_to_gcs import \
     GCSToGCSOperator
 from dotenv import dotenv_values
 
-from callbacks import create_tmp_table_name, if_new_files, landing_success, \
-    landing_to_staging, log_new_files, staging_to_target
+from dist.passcard_scd_dag_callbacks import generate_tmp_table_name,\
+    if_new_files, landing_success, landing_to_staging, log_new_files, \
+    staging_to_target
 
-config = dotenv_values('.env')
+config = dotenv_values('.env')  # TODO: make to read from the project root
 
 BUCKET = 'passage'
 BUCKET_ARCHIVE = 'passage-archive'
 STORAGE_FOLDER = 'passcards'
 
 with airflow.DAG(
-    'passcard_scd',
+    'passcard_scd_dag',
     start_date=datetime(2021, 1, 1),
     schedule_interval=None,
     tags=['passcard'],
@@ -40,15 +41,15 @@ with airflow.DAG(
         python_callable=if_new_files,
     )
 
-    create_landing_table_name = PythonOperator(
-        task_id='create_landing_table_name',
-        python_callable=create_tmp_table_name,
+    generate_landing_table_name = PythonOperator(
+        task_id='generate_landing_table_name',
+        python_callable=generate_tmp_table_name,
     )
 
     transfer_data_from_storage_to_bq = GCSToBigQueryOperator(
         task_id='transfer_data_from_storage_to_bq',
         schema_fields=[
-            {'name': 'passcard_key', 'type': 'INTEGER', 'mode': 'REQUIRED'},
+            {'name': 'id', 'type': 'INTEGER', 'mode': 'REQUIRED'},
             {'name': 'person_id', 'type': 'STRING', 'mode': 'REQUIRED'},
             {'name': 'security_id', 'type': 'INTEGER', 'mode': 'REQUIRED'},
             {'name': 'start_date', 'type': 'INTEGER', 'mode': 'REQUIRED'},
@@ -101,6 +102,6 @@ with airflow.DAG(
     get_new_files_from_storage >> if_new_files >> finish
 
     get_new_files_from_storage >> if_new_files >> \
-        create_landing_table_name >> transfer_data_from_storage_to_bq >> \
+        generate_landing_table_name >> transfer_data_from_storage_to_bq >> \
         add_hash_to_records >> archive_processed_files >> \
         drop_landing_tmp_table >> enrich_data_and_put_on_dwh >> finish

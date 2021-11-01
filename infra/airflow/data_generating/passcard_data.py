@@ -16,7 +16,7 @@ STORAGE_FOLDER = 'passcards'
 
 Passcard = namedtuple(
     'Passcard',
-    ['passcard_key', 'person_id', 'security_id', 'start_date', 'expires_at'],
+    ['id', 'person_id', 'security_id', 'start_date', 'expires_at'],
 )
 
 config = dotenv_values('.env')
