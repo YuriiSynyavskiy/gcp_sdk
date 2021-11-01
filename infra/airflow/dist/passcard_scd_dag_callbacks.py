@@ -1,16 +1,16 @@
+import os
 from datetime import datetime
 
 from airflow.exceptions import AirflowSkipException
-from dotenv import dotenv_values
+from dotenv import load_dotenv
 from sqlalchemy import MetaData, Table, column, create_engine, func, join, \
     literal, select, text
 from sqlalchemy.sql.functions import concat
 
-config = dotenv_values('.env')
+load_dotenv()
 
 engine = create_engine(
-    f'bigquery://{config.get("PROJECT_ID")}',
-    credentials_path=config.get('GOOGLE_APPLICATION_CREDENTIALS'),
+    f'bigquery://{os.environ.get("PROJECT_ID")}',
 )
 
 
@@ -30,7 +30,7 @@ def landing_success(context, **kwargs):
 
 def generate_tmp_table_name(ti, **kwargs):
     ts = str(datetime.today().replace(microsecond=0).timestamp())[0:-2]
-    name = '_'.join(['tmp', config.get('PASSCARD_TABLE_NAME'), ts])
+    name = '_'.join(['tmp', os.environ.get('PASSCARD_TABLE_NAME'), ts])
     ti.xcom_push('tmp_dm_passcard', name)
 
 
@@ -43,19 +43,19 @@ def if_new_files(ti, **kwargs):
 
 def landing_to_staging(landing_table_name, ti, **kwargs):
     landing_table = Table(
-        f'{config.get("DATASET_LANDING_ID")}.{landing_table_name}',
+        f'{os.environ.get("DATASET_LANDING_ID")}.{landing_table_name}',
         MetaData(bind=engine),
         autoload=True,
     )
     staging_table = Table(
-        f'{config.get("DATASET_STAGING_ID")}.'
-        f'{config.get("PASSCARD_TABLE_NAME")}',
+        f'{os.environ.get("DATASET_STAGING_ID")}.'
+        f'{os.environ.get("PASSCARD_TABLE_NAME")}',
         MetaData(bind=engine),
         autoload=True,
     )
     target_table = Table(
-        f'{config.get("DATASET_TARGET_ID")}.'
-        f'{config.get("PASSCARD_TABLE_NAME")}',
+        f'{os.environ.get("DATASET_TARGET_ID")}.'
+        f'{os.environ.get("PASSCARD_TABLE_NAME")}',
         MetaData(bind=engine),
         autoload=True,
     )
@@ -83,9 +83,10 @@ def landing_to_staging(landing_table_name, ti, **kwargs):
             landing_table,
             target_table,
             landing_table.c.id == target_table.c.passcard_key,
-            ),
+        ),
     ).cte()
 
+    # TODO: consider duplications
     select_updated = select([
         cte.c.id,
         cte.c.person_id,
@@ -95,18 +96,19 @@ def landing_to_staging(landing_table_name, ti, **kwargs):
         cte.c.hash,
     ]).select_from(cte).where(
         column('hash') != column('target_hash'),
-        )
+    )
 
-    # TODO: find a more elegant approach ↓
+    # TODO: find a more elegant approach
     # BigQuery executes only INSERT INTO table WITH cte AS ...,
     # not WITH cte AS (...) INSERT ...
     insert_updated = text(
         f'INSERT INTO '
-        f'{config.get("DATASET_STAGING_ID")}.'
-        f'{config.get("PASSCARD_TABLE_NAME")} '
+        f'{os.environ.get("DATASET_STAGING_ID")}.'
+        f'{os.environ.get("PASSCARD_TABLE_NAME")} '
         f'{str(select_updated)}'
     )
 
+    # TODO: try to use UNION
     select_new = select([
         *landing_table.c,
         _hash,
@@ -127,22 +129,22 @@ def landing_to_staging(landing_table_name, ti, **kwargs):
 
     with engine.connect() as conn:
         conn.execute(f'TRUNCATE TABLE '
-                     f'{config.get("DATASET_STAGING_ID")}.'
-                     f'{config.get("PASSCARD_TABLE_NAME")}')
+                     f'{os.environ.get("DATASET_STAGING_ID")}.'
+                     f'{os.environ.get("PASSCARD_TABLE_NAME")}')
         conn.execute(insert_updated)
         conn.execute(insert_new)
 
 
 def staging_to_target(ti, **kwargs):
     staging_table = Table(
-        f'{config.get("DATASET_STAGING_ID")}.'
-        f'{config.get("PASSCARD_TABLE_NAME")}',
+        f'{os.environ.get("DATASET_STAGING_ID")}.'
+        f'{os.environ.get("PASSCARD_TABLE_NAME")}',
         MetaData(bind=engine),
         autoload=True,
     )
     target_table = Table(
-        f'{config.get("DATASET_TARGET_ID")}.'
-        f'{config.get("PASSCARD_TABLE_NAME")}',
+        f'{os.environ.get("DATASET_TARGET_ID")}.'
+        f'{os.environ.get("PASSCARD_TABLE_NAME")}',
         MetaData(bind=engine),
         autoload=True,
     )

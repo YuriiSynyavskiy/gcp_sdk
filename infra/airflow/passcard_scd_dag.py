@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 import airflow
@@ -10,13 +11,13 @@ from airflow.providers.google.cloud.transfers.gcs_to_bigquery import \
     GCSToBigQueryOperator
 from airflow.providers.google.cloud.transfers.gcs_to_gcs import \
     GCSToGCSOperator
-from dotenv import dotenv_values
+from dotenv import load_dotenv
 
-from dist.passcard_scd_dag_callbacks import generate_tmp_table_name,\
+from dist.passcard_scd_dag_callbacks import generate_tmp_table_name, \
     if_new_files, landing_success, landing_to_staging, log_new_files, \
     staging_to_target
 
-config = dotenv_values('.env')  # TODO: make to read from the project root
+load_dotenv()
 
 BUCKET = 'passage'
 BUCKET_ARCHIVE = 'passage-archive'
@@ -58,7 +59,7 @@ with airflow.DAG(
         bucket=BUCKET,
         source_objects='/'.join([STORAGE_FOLDER, '*.csv']),
         destination_project_dataset_table='.'.join([
-            config.get('DATASET_LANDING_ID'),
+            os.environ.get('DATASET_LANDING_ID'),
             '{{ ti.xcom_pull(key="tmp_dm_passcard") }}',
         ]),
         skip_leading_rows=1,
@@ -86,8 +87,8 @@ with airflow.DAG(
     drop_landing_tmp_table = BigQueryDeleteTableOperator(
         task_id='drop_landing_tmp_table',
         deletion_dataset_table='.'.join([
-            config.get('PROJECT_ID'),
-            config.get('DATASET_LANDING_ID'),
+            os.environ.get('PROJECT_ID'),
+            os.environ.get('DATASET_LANDING_ID'),
             '{{ ti.xcom_pull(key="tmp_dm_passcard") }}',
         ]),
     )
@@ -101,7 +102,7 @@ with airflow.DAG(
 
     get_new_files_from_storage >> if_new_files >> finish
 
-    get_new_files_from_storage >> if_new_files >> \
-        generate_landing_table_name >> transfer_data_from_storage_to_bq >> \
-        add_hash_to_records >> archive_processed_files >> \
-        drop_landing_tmp_table >> enrich_data_and_put_on_dwh >> finish
+    if_new_files >> generate_landing_table_name >> \
+        transfer_data_from_storage_to_bq >> add_hash_to_records >> \
+        archive_processed_files >> drop_landing_tmp_table >> \
+        enrich_data_and_put_on_dwh >> finish
