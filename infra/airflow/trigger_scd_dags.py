@@ -28,6 +28,12 @@ with airflow.DAG(
         dag=dag
     )
 
+    execute_passcard_scd_dag = TriggerDagRunOperator(
+        task_id='execute_passcard_scd_dag',
+        trigger_dag_id='passcard_scd_dag',
+        dag=dag
+    )
+
     execute_department_scd_dag = TriggerDagRunOperator(
         task_id='execute_department_scd_dag',
         trigger_dag_id='department_scd_dag',
@@ -53,5 +59,5 @@ with airflow.DAG(
         trigger_rule='all_done',
         dag=dag
     )
-    start_of_job >> execute_person_scd_dag >> execute_department_scd_dag >> \
+    start_of_job >> execute_person_scd_dag >> execute_passcard_scd_dag >> execute_department_scd_dag >> \
     execute_gate_scd_dag >> execute_location_scd_dag >> end_of_job

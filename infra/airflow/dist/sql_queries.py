@@ -98,11 +98,11 @@ sql_landing_to_staging_location = f"""
     delete from {Variable.get('STAGING_DATASET_ID')}.{location_table_name} where true; 
 
     INSERT INTO {Variable.get('STAGING_DATASET_ID')}.{location_table_name} 
-    SELECT b.location_key, b.building_id, b.security_id, b.gate_id, b.room_number, b.floor, b.description, b.hash_id
+    SELECT b.location_key, b.building_id, b.security_id, c.dm_gate_id, b.room_number, b.floor, b.description, b.hash_id
     FROM {Variable.get('DATASET_ID')}.{location_table_name} a right join ( 
     select to_hex(md5(concat(run_id, building_id, security_id, gate_id, room_number, floor, description))) as hash_id, 
     location_key, building_id, security_id, gate_id, room_number, floor, description
-    FROM {Variable.get('LANDING_DATASET_ID')}.{location_table_name} ) b on a.location_key = b.location_key 
+    FROM {Variable.get('LANDING_DATASET_ID')}.{location_table_name} ) b on a.location_key = b.location_key left join {Variable.get('DATASET_ID')}.{gate_table_name} c on b.gate_id = c.gate_key and c.flag='Y' 
     WHERE a.hash_id is null or a.flag='Y' and a.hash_id != b.hash_id;
 
     COMMIT TRANSACTION;
@@ -113,7 +113,8 @@ sql_staging_to_target_location = f"""
     update {Variable.get('DATASET_ID')}.{location_table_name} t 
     set 
         t.effective_end_date = current_datetime(),
-        t.flag='N'
+        t.flag='N',
+        t.dm_gate_id = a.gate_id
     from {Variable.get('STAGING_DATASET_ID')}.{location_table_name} a 
     where a.location_key = t.location_key and t.flag='Y';
 
