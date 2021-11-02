@@ -37,15 +37,15 @@ class ParseToJson(beam.DoFn):
        self.bucket=client.get_bucket(bucket_id);
 
     def process(self, element):
+        record = json.loads(element)
         record_correctness = True
         try:
-            if element.get('id') and element.get('dm_gate_id') and element.get('dm_passcard_id'):
+            if record.get('id') and record.get('dm_gate_id') and record.get('dm_passcard_id'):
                 record_correctness = True
             else:
                 record_correctness = False
         except Exception:
             record_correctness = False
-        record = json.loads(element)
         if record_correctness:
             self.logger.log_struct({
                 'message': f"{datetime.now(tz=None)} Record {record.get('id')} will be uploaded to BigQuery",
