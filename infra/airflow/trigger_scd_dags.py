@@ -1,10 +1,11 @@
-import airflow
 from datetime import datetime
+
+import airflow
+from airflow.operators.dagrun_operator import TriggerDagRunOperator
+from airflow.operators.python import PythonOperator
+
 from dist.logger import get_logger
 from dist.utils import message_logging
-from airflow.operators.python import PythonOperator
-from airflow.operators.dagrun_operator import TriggerDagRunOperator
-
 
 LOG_NAME = 'trigger_scd_dags'
 logger = get_logger(LOG_NAME)
@@ -14,11 +15,16 @@ with airflow.DAG(
         start_date=datetime(2021, 1, 1),
         # Not scheduled, trigger only
         schedule_interval=None) as dag:
-    
+
     start_of_job = PythonOperator(
         task_id='logging_start_of_job',
         python_callable=message_logging,
-        op_args=[logger, 'INFO', f'{datetime.now(tz=None)} Starting of job with id {{{{run_id}}}} for trigger scd DAGs'],
+        op_args=[
+            logger,
+            'INFO',
+            f'{datetime.now(tz=None)} Starting of job with '
+            f'id {{{{run_id}}}} for trigger scd DAGs',
+        ],
         dag=dag
     )
 
@@ -55,9 +61,16 @@ with airflow.DAG(
     end_of_job = PythonOperator(
         task_id='end_of_job',
         python_callable=message_logging,
-        op_args=[logger, 'INFO', str(datetime.now(tz=None)) + ' Job with id {{run_id}} ended'],
+        op_args=[
+            logger,
+            'INFO',
+            str(datetime.now(tz=None)) + ' Job with id {{run_id}} ended'],
         trigger_rule='all_done',
         dag=dag
     )
-    start_of_job >> execute_person_scd_dag >> execute_passcard_scd_dag >> execute_department_scd_dag >> \
-    execute_gate_scd_dag >> execute_location_scd_dag >> end_of_job
+
+    start_of_job >> [
+        execute_person_scd_dag, execute_passcard_scd_dag,
+        execute_department_scd_dag, execute_gate_scd_dag,
+        execute_location_scd_dag
+    ] >> end_of_job
