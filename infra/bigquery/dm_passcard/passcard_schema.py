@@ -1,21 +1,13 @@
+import os
 from typing import List
 
-from dotenv import dotenv_values
+from dotenv import load_dotenv
 from google.cloud.bigquery import Client as BigQueryClient
 from google.cloud.bigquery import Table, SchemaField
-from google.oauth2 import service_account
 
-config = dotenv_values('.env')
+load_dotenv()
 
 PASSCARD_TABLE_NAME = 'dm_passcard'
-
-
-def get_bq_client() -> BigQueryClient:
-    credentials = service_account.Credentials.from_service_account_file(
-        config.get('GOOGLE_APPLICATION_CREDENTIALS'),
-    )
-
-    return BigQueryClient(credentials=credentials)
 
 
 def create_passcard_table_in_dataset(
@@ -24,7 +16,7 @@ def create_passcard_table_in_dataset(
     schema: List[SchemaField]
 ) -> None:
     table = Table('.'.join([
-        config.get('PROJECT_ID'),
+        os.environ.get('PROJECT_ID'),
         dataset_id,
         PASSCARD_TABLE_NAME,
     ]), schema=schema)
@@ -55,16 +47,16 @@ def init():
         SchemaField('hash', 'STRING', mode='REQUIRED'),
     ]
 
-    client = get_bq_client()
+    client = BigQueryClient()
 
     create_passcard_table_in_dataset(
         client,
-        config.get('DATASET_STAGING_ID'),
+        os.environ.get('DATASET_STAGING_ID'),
         staging_schema,
     )
     create_passcard_table_in_dataset(
         client,
-        config.get('DATASET_TARGET_ID'),
+        os.environ.get('DATASET_TARGET_ID'),
         target_schema,
     )
 
