@@ -25,6 +25,8 @@ Generate topic in Pub Sub with script - pub_sub_topic_creation.py.
 Generate schema of BigQuery with script - bigquery_schema.py
 
 
+To generate some number of passages run `python ./generate_passages.py NUM`
+
 !!!IMPORTANT!!!
 
 If you want to run pub_sub_topic_creation.py increase version of google-cloud-pubsub>=2.8.0
