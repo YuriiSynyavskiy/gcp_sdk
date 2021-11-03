@@ -1,10 +1,10 @@
 from datetime import datetime
-
 from airflow.contrib.hooks.gcs_hook import GoogleCloudStorageHook
 from airflow.models import Variable
 from google.cloud.logging_v2.logger import Logger
-
+from google.cloud import bigquery
 from dist.logger import get_logger
+from dist.tables import datamart_throughput_table_name
 
 
 def message_logging(logger, severity, message, **kwargs):
@@ -87,7 +87,6 @@ def get_older_files(ti, **kwargs):
 
         if len(files):
             ti.xcom_push(key=prefix.format(dim), value=files[0])
-
     return
 
 
@@ -99,3 +98,20 @@ def log_info(logger: Logger, message: str, run_id: str):
         },
         severity='INFO',
     )
+    return
+
+def last_datamarts_updates(ti, **kwargs):
+    client = bigquery.Client()
+
+    tables = [datamart_throughput_table_name]   # ADD ALL DATAMARTS
+    for table in tables:
+        query_job = client.query(f"""
+            SELECT MAX(timestamp) as max_time
+            FROM {Variable.get("DATAMART_DATASET_ID")}.{table};
+        """)
+        result = [i for i in query_job]
+        if result[0].max_time:
+            ti.xcom_push(key=table, value=str(result[0].max_time))
+        else:
+            ti.xcom_push(key=table, value='1800-01-01')
+    return
