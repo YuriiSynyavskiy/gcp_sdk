@@ -2,22 +2,40 @@ import os
 import re
 import csv
 import random
-from google.cloud import storage
+from airflow.contrib.hooks.gcs_hook import GoogleCloudStorageHook
 from datetime import datetime
 
-CLIENT = storage.Client.from_service_account_json(json_credentials_path="/home/airflow/gcs/dags/data_generating/storage.json")
+CONNECTION = GoogleCloudStorageHook()
 HEADER = ['id', 'contact_information', 'state', 'throughput']
 FILE_NAME = f'gates_{str(datetime.timestamp(datetime.now())).split(".")[0]}.csv'
 BUCKET_NAME = 'edu-passage-bucket'
 BLOB_NAME = f'gates/{FILE_NAME}'
 
 
-def upload_to_bucket(file_path):
-    """ Upload data to a bucket"""
-    bucket = CLIENT.get_bucket(BUCKET_NAME)
-    
-    object_name_in_gcs_bucket = bucket.blob(BLOB_NAME)
-    object_name_in_gcs_bucket.upload_from_filename(file_path)
+def upload_to_bucket(file_name):
+    """ Upload data to the bucket"""
+    CONNECTION.upload(
+        bucket_name = BUCKET_NAME,
+        object_name = f'gates/{file_name}',
+        filename = file_name
+    )
+
+
+def download_file(file_name):
+    """ Download file from the bucket"""
+    return CONNECTION.download(
+        bucket_name = BUCKET_NAME,
+        object_name = f'{file_name}',
+        filename = file_name.split('/')[-1]
+    )
+
+
+def remove_file_from_gcs(file_name):
+    """ Remove file from the bucket"""
+    CONNECTION.delete(
+        bucket_name = BUCKET_NAME,
+        object_name = f'gates/{file_name}'
+    )
 
 
 def create_gate_data():
@@ -35,29 +53,10 @@ def create_gate_data():
     return FILE_NAME
 
 
-def remove_file_from_gcs(blob_name):
-    bucket = CLIENT.get_bucket(BUCKET_NAME)
-    blob = bucket.blob(blob_name)
-    print(blob)
-    blob.delete()
-
-
 def add_run_id(**kwargs):
     """Add run_id to the file from airflow"""
-    list_of_blobs = []
-    for blob in CLIENT.list_blobs(BUCKET_NAME, prefix='gates'):
-        list_of_blobs.append(blob)
-    print(list_of_blobs)
-    blob = re.search(r'gates/gates.*\.csv', str(list_of_blobs[1]))
-    blob = blob.group()
-    bucket = CLIENT.get_bucket(BUCKET_NAME)
-    get_blob_name = bucket.blob(blob)
-    download_blob = get_blob_name.download_as_string().decode("utf-8")
-    with open(FILE_NAME, 'w') as f:
-        lns = download_blob.split('\n')
-        for item in lns:
-            f.write(item)
-    file_name = [filename for filename in os.listdir('.') if filename.startswith("gates")][0]
+    file_path = download_file(kwargs['file_name'])
+    file_name = file_path.split('/')[-1]
     new_file_name = f'new_{file_name}'
     with open(file_name, 'r') as read_obj, \
             open(new_file_name, 'w', newline='') as write_obj:
@@ -69,6 +68,4 @@ def add_run_id(**kwargs):
             transform_row(row, csv_reader.line_num)
             csv_writer.writerow(row)
     upload_to_bucket(new_file_name)
-    os.remove(new_file_name)
-    os.remove(file_name)
-    remove_file_from_gcs(blob)
+    remove_file_from_gcs(file_path)
