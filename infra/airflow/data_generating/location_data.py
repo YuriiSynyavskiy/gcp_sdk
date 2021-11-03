@@ -68,6 +68,7 @@ def create_location_data():
 
 
 def add_run_id(**kwargs):
+    """Add run_id to the file from airflow"""
     file_path = download_file(kwargs['file_name'])
     file_name = file_path.split('/')[-1]
     new_file_name = f'new_{file_name}'
