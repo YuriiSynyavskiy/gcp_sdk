@@ -4,7 +4,7 @@ from dist.logger import get_logger
 from dist.utils import message_logging
 from airflow.operators.python import PythonOperator
 from airflow.operators.dagrun_operator import TriggerDagRunOperator
-from airflow.operators.sensors import ExternalTaskSensor
+from airflow.sensors.external_task import ExternalTaskSensor
 
 
 LOG_NAME = 'trigger_scd_dags'
