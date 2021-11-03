@@ -7,7 +7,11 @@ from sqlalchemy import MetaData, Table, column, create_engine, func, join, \
     literal, select, text
 from sqlalchemy.sql.functions import concat
 
+from logger import get_logger
+
 load_dotenv()
+
+logger = get_logger('passcard_scd_dag')
 
 engine = create_engine(
     f'bigquery://{os.environ.get("PROJECT_ID")}',
@@ -84,9 +88,8 @@ def landing_to_staging(landing_table_name, ti, **kwargs):
             target_table,
             landing_table.c.id == target_table.c.passcard_key,
         ),
-    ).cte()
+    ).where(target_table.c.current_flag == text('"Y"')).cte()
 
-    # TODO: consider duplications
     select_updated = select([
         cte.c.id,
         cte.c.person_id,

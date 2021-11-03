@@ -4,9 +4,7 @@ from collections import namedtuple
 from datetime import datetime, timedelta
 from typing import List
 
-from dotenv import dotenv_values
 from google.cloud.storage import Client as StorageClient
-from google.oauth2 import service_account
 
 pattern = '%Y%m%d'
 
@@ -18,8 +16,6 @@ Passcard = namedtuple(
     'Passcard',
     ['id', 'person_id', 'security_id', 'start_date', 'expires_at'],
 )
-
-config = dotenv_values('.env')
 
 
 def get_random_date(start: datetime, end: datetime):
@@ -39,10 +35,10 @@ def get_random_date_range(start: datetime, end: datetime):
 def get_n_random_passcards(n: int):
     passcards = []
 
-    for _ in range(0, n):
+    for i in random.sample(range(1, 101), n):
         passcards.append(
             Passcard(
-                random.randint(1, 100),
+                i,
                 random.randint(1, 10),
                 random.randint(1, 10),
                 *map(int, get_random_date_range(START_DATE, END_DATE)),
@@ -68,16 +64,8 @@ def write_passcards_to_file(passcards: List[Passcard]) -> str:
     return filename
 
 
-def get_storage_client() -> StorageClient:
-    credentials = service_account.Credentials.from_service_account_file(
-        config.get('GOOGLE_APPLICATION_CREDENTIALS'),
-    )
-
-    return StorageClient(credentials=credentials)
-
-
 def upload_passcards_file_to_storage(filename: str):
-    storage_client = get_storage_client()
+    storage_client = StorageClient()
 
     bucket = storage_client.get_bucket('passage')
     blob = bucket.blob('/'.join([STORAGE_FOLDER, filename]))
@@ -85,7 +73,7 @@ def upload_passcards_file_to_storage(filename: str):
 
 
 def run():
-    passcards = get_n_random_passcards(100)
+    passcards = get_n_random_passcards(random.randint(7, 51))
     filename = write_passcards_to_file(passcards)
 
     upload_passcards_file_to_storage(filename)

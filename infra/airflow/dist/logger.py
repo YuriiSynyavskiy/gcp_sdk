@@ -1,7 +1,7 @@
-from google.cloud import logging
-
-def get_logger(log_name):
-    logging_client = logging.Client()
-    return logging_client.logger(log_name)
+from google.cloud.logging_v2 import Client
 
 
+def get_logger(logger_name):
+    logging_client = Client()
+
+    return logging_client.logger(logger_name)
