@@ -27,7 +27,7 @@ def create_gate_data():
                                         fieldnames=HEADER)
         location_writer.writeheader()
         list_of_dict = []
-        for i in range(1,15):
+        for i in range(1,21):
             result = {"id": str(i), "contact_information": f'{random.randint(100, 999)}-{random.randint(100,999)}-{random.randint(1000,9999)}', 
                       "state": 'working', "throughput": 10 * random.randint(3,6)}
             list_of_dict.append(result)

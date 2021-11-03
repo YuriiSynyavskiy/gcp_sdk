@@ -4,6 +4,7 @@ from dist.logger import get_logger
 from dist.utils import message_logging
 from airflow.operators.python import PythonOperator
 from airflow.operators.dagrun_operator import TriggerDagRunOperator
+from airflow.operators.sensors import ExternalTaskSensor
 
 
 LOG_NAME = 'trigger_scd_dags'
@@ -28,9 +29,23 @@ with airflow.DAG(
         dag=dag
     )
 
+    person_scd_dag_sensor = ExternalTaskSensor(
+        task_id='person_scd_dag_sensor',
+        external_dag_id='person_scd_dag',
+        external_task_id='end_of_job',
+        dag=dag
+    )
+
     execute_passcard_scd_dag = TriggerDagRunOperator(
         task_id='execute_passcard_scd_dag',
         trigger_dag_id='passcard_scd_dag',
+        dag=dag
+    )
+
+    passcard_scd_dag_sensor = ExternalTaskSensor(
+        task_id='passcard_scd_dag_sensor',
+        external_dag_id='passcard_scd_dag',
+        external_task_id='finish',
         dag=dag
     )
 
@@ -40,15 +55,36 @@ with airflow.DAG(
         dag=dag
     )
 
+    department_scd_dag_sensor = ExternalTaskSensor(
+        task_id='department_scd_dag_sensor',
+        external_dag_id='department_scd_dag',
+        external_task_id='end_of_job',
+        dag=dag
+    )
+
     execute_gate_scd_dag = TriggerDagRunOperator(
         task_id='execute_gate_scd_dag',
         trigger_dag_id='gate_scd_dag',
         dag=dag
     )
 
+    gate_scd_dag_sensor = ExternalTaskSensor(
+        task_id='gate_scd_dag_sensor',
+        external_dag_id='gate_scd_dag',
+        external_task_id='end_of_job',
+        dag=dag
+    )
+
     execute_location_scd_dag = TriggerDagRunOperator(
         task_id='execute_location_scd_dag',
         trigger_dag_id='location_scd_dag',
+        dag=dag
+    )
+
+    location_scd_dag_sensor = ExternalTaskSensor(
+        task_id='location_scd_dag_sensor',
+        external_dag_id='location_scd_dag',
+        external_task_id='end_of_job',
         dag=dag
     )
 
@@ -59,5 +95,6 @@ with airflow.DAG(
         trigger_rule='all_done',
         dag=dag
     )
-    start_of_job >> execute_person_scd_dag >> execute_passcard_scd_dag >> execute_department_scd_dag >> \
-    execute_gate_scd_dag >> execute_location_scd_dag >> end_of_job
+    start_of_job >> execute_person_scd_dag >> person_scd_dag_sensor >> execute_passcard_scd_dag >> passcard_scd_dag_sensor >> \
+    execute_department_scd_dag >> department_scd_dag_sensor >> execute_gate_scd_dag >> gate_scd_dag_sensor >> \
+    execute_location_scd_dag >> location_scd_dag_sensor >> end_of_job
