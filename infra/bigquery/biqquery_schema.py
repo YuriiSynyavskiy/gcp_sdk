@@ -11,7 +11,7 @@ dataset_id = os.environ.get("DATASET_ID")
 staging_dataset_id = os.environ.get("STAGING_DATASET_ID")
 landing_dataset_id = os.environ.get("LANDING_DATASET_ID")
 project_id = os.environ.get("PROJECT_ID")
-
+datamarts_dataset_id = os.environ.get("DATAMART_DATASET_ID")
 # Check if dataset is already existing
 
 query = f"""
@@ -57,3 +57,15 @@ else:
     query_job = client.query(query)
 
     print(f"Dataset {landing_dataset_id} was successfully created.")
+
+
+if datamarts_dataset_id in datasets:
+    print(f"Dataset {datamarts_dataset_id} is already existing.")
+else:
+    # Create if dataset isn't existing
+    query = f"""
+        CREATE SCHEMA {datamarts_dataset_id};
+    """
+    query_job = client.query(query)
+
+    print(f"Dataset {datamarts_dataset_id} was successfully created.")

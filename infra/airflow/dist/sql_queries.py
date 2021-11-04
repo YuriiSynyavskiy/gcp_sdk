@@ -1,5 +1,9 @@
 from dist.tables import (location_table_name, dept_table_name, 
-                        tmp_dept_table_name, person_table_name, tmp_person_table_name, gate_table_name)
+                        tmp_dept_table_name, person_table_name, 
+                        tmp_person_table_name, gate_table_name, 
+                        datamart_throughput_table_name, fk_passage_table_name)
+
+from dist.logger import get_logger
 
 from airflow.models import Variable
 
@@ -156,3 +160,10 @@ sql_staging_to_target_gate = f"""
 
     COMMIT TRANSACTION;
     """
+
+sql_update_throughput_datamart = f"""
+    INSERT INTO {Variable.get("DATAMART_DATASET_ID")}.{datamart_throughput_table_name} 
+    SELECT a.dm_gate_id, b.gate_key, timestamp, cast(throughput as int) 
+    FROM {Variable.get('DATASET_ID')}.{fk_passage_table_name} a left join {Variable.get('DATASET_ID')}.{gate_table_name} b on a.dm_gate_id = b.dm_gate_id 
+    WHERE timestamp > '{{{{task_instance.xcom_pull(task_ids="get_last_datamarts_updates", key="{datamart_throughput_table_name}")}}}}'
+"""

@@ -43,9 +43,8 @@ class LocalToGCSOperator(BaseOperator):
         self.conn = GoogleCloudStorageHook()
 
     def execute(self, context):
-        if self.run_id:
+        if self.run_id and self.run_id[0]:
             self.previous_file = None
-
         if self.previous_file:
             self.download_file()
             if self.logger:

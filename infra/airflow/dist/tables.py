@@ -6,3 +6,7 @@ dept_table_name = 'dm_department'
 
 location_table_name = 'dm_location'
 gate_table_name = 'dm_gate'
+
+datamart_throughput_table_name = 'throughput_datamart'
+
+fk_passage_table_name = 'fk_passage'
