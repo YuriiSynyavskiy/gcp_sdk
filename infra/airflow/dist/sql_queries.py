@@ -1,7 +1,8 @@
 from dist.tables import (location_table_name, dept_table_name, 
                         tmp_dept_table_name, person_table_name, 
                         tmp_person_table_name, gate_table_name, 
-                        datamart_throughput_table_name, fk_passage_table_name)
+                        datamart_throughput_table_name, fk_passage_table_name,
+                        error_fk_passage_table_name, passcard_table_name)
 
 from dist.logger import get_logger
 
@@ -166,4 +167,48 @@ sql_update_throughput_datamart = f"""
     SELECT a.dm_gate_id, b.gate_key, timestamp, cast(throughput as int) 
     FROM {Variable.get('DATASET_ID')}.{fk_passage_table_name} a left join {Variable.get('DATASET_ID')}.{gate_table_name} b on a.dm_gate_id = b.dm_gate_id 
     WHERE timestamp > '{{{{task_instance.xcom_pull(task_ids="get_last_datamarts_updates", key="{datamart_throughput_table_name}")}}}}'
+"""
+
+sql_landing_to_staging_fk_passage = f"""
+    BEGIN TRANSACTION;
+    delete from {Variable.get('STAGING_DATASET_ID')}.{fk_passage_table_name} where true; 
+
+    INSERT INTO {Variable.get('STAGING_DATASET_ID')}.{fk_passage_table_name} 
+    SELECT main.id, main.dm_gate_key, a.dm_gate_id, main.dm_passcard_key,
+           b.dm_passcard_id, main.dm_status_id, main.dm_direction_id, main.timestamp,
+           CAST(FORMAT_TIMESTAMP('%Y%m%d', main.timestamp, 'UTC') as int) as dm_date_id, FORMAT_TIMESTAMP('%H%M%S', main.timestamp, 'UTC') as dm_time_id 
+    FROM {Variable.get('LANDING_DATASET_ID')}.{fk_passage_table_name} main 
+        left join {Variable.get('DATASET_ID')}.{gate_table_name} a on cast(main.dm_gate_key as string) = a.gate_key and a.flag = 'Y' 
+        left join {Variable.get('DATASET_ID')}.{passcard_table_name} b on main.dm_passcard_key = b.passcard_key and b.current_flag = 'Y' 
+    WHERE main.timestamp > '{{{{task_instance.xcom_pull(task_ids="get_last_updated_record", key="last_updated_date")}}}}';
+
+    INSERT INTO {Variable.get('STAGING_DATASET_ID')}.{fk_passage_table_name} 
+    SELECT main.id, main.dm_gate_key, a.dm_gate_id, main.dm_passcard_key,
+           b.dm_passcard_id, main.dm_status_id, main.dm_direction_id, main.timestamp,
+           CAST(FORMAT_TIMESTAMP('%Y%m%d', main.timestamp, 'UTC') as int) as dm_date_id, FORMAT_TIMESTAMP('%H%M%S', main.timestamp, 'UTC') as dm_time_id 
+    FROM {Variable.get('DATASET_ID')}.{error_fk_passage_table_name} main 
+        left join {Variable.get('DATASET_ID')}.{gate_table_name} a on cast(main.dm_gate_key as string) = a.gate_key and a.flag = 'Y' 
+        left join {Variable.get('DATASET_ID')}.{passcard_table_name} b on main.dm_passcard_key = b.passcard_key and b.current_flag = 'Y'; 
+    
+    DELETE FROM {Variable.get('DATASET_ID')}.{error_fk_passage_table_name} where true;
+
+    COMMIT TRANSACTION;
+"""
+
+sql_staging_to_target_fk_passage = f"""
+    BEGIN TRANSACTION;
+
+    INSERT INTO {Variable.get('DATASET_ID')}.{fk_passage_table_name}  
+    SELECT id, dm_gate_key, dm_gate_id, dm_passcard_key, 
+           dm_passcard_id, dm_status_id, dm_direction_id, timestamp,
+           dm_date_id, dm_time_id 
+    FROM {Variable.get('STAGING_DATASET_ID')}.{fk_passage_table_name}
+    WHERE dm_gate_id is not null and dm_gate_id != '' and dm_passcard_id is not null and dm_passcard_id != '';
+
+    INSERT INTO {Variable.get('DATASET_ID')}.{error_fk_passage_table_name} 
+    SELECT id, dm_gate_key, dm_passcard_key, dm_status_id, dm_direction_id, timestamp 
+    FROM {Variable.get('STAGING_DATASET_ID')}.{fk_passage_table_name}
+    WHERE dm_gate_id is null or dm_gate_id = '' or dm_passcard_id is null or dm_passcard_id = '';
+
+    COMMIT TRANSACTION;
 """

@@ -5,7 +5,7 @@ import apache_beam as beam
 from datetime import datetime
 from apache_beam.options.pipeline_options import PipelineOptions
 
-schema = 'id:STRING, dm_gate_key:INT, dm_gate_id:STRING, dm_passcard_key: INT, dm_passcard_id:STRING, dm_status_id:INT, dm_direction_id:INT, timestamp:TIMESTAMP, dm_date_id:INT, dm_time_id:STRING'
+schema = 'id:STRING, dm_gate_key:INT, dm_passcard_key: INT, dm_status_id:INT, dm_direction_id:INT, timestamp:TIMESTAMP'
 
 passage_table = 'fk_passage'
 
@@ -25,7 +25,7 @@ p_options = {
 topic_name = 'passage-events'
 topic_id = f"projects/{p_options['project']}/topics/{topic_name}"
 
-dataset_id = "passage_dataset"
+dataset_id = "landing_passage_dataset"
 
 
 class ParseToJson(beam.DoFn):
@@ -40,7 +40,7 @@ class ParseToJson(beam.DoFn):
         record = json.loads(element)
         record_correctness = True
         try:
-            if record.get('id') and record.get('dm_gate_id') and record.get('dm_passcard_id'):
+            if record.get('id') and record.get('dm_gate_key') and record.get('dm_passcard_key'):
                 record_correctness = True
             else:
                 record_correctness = False
