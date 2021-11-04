@@ -4,7 +4,7 @@ from airflow.models import Variable
 from google.cloud.logging_v2.logger import Logger
 from google.cloud import bigquery
 from dist.logger import get_logger
-from dist.tables import datamart_throughput_table_name
+from dist.tables import fk_passage_table_name, datamart_throughput_table_name
 
 
 def message_logging(logger, severity, message, **kwargs):
@@ -114,4 +114,18 @@ def last_datamarts_updates(ti, **kwargs):
             ti.xcom_push(key=table, value=str(result[0].max_time))
         else:
             ti.xcom_push(key=table, value='1800-01-01')
+    return
+
+
+def get_last_updated_record(ti, **kwargs):
+    client = bigquery.Client()
+    query_job = client.query(f"""
+        SELECT MAX(timestamp) as max_time
+        FROM {Variable.get("DATASET_ID")}.{fk_passage_table_name};
+    """)
+    result = [i for i in query_job]
+    if result[0].max_time:
+        ti.xcom_push(key='last_updated_date', value=str(result[0].max_time))
+    else:
+        ti.xcom_push(key='last_updated_date', value='1800-01-01')
     return

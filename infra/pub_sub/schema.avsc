@@ -11,16 +11,8 @@
      "type" : "int"
    },
    {
-     "name" : "dm_gate_id",
-     "type" : "string"
-   },
-   {
      "name" : "dm_passcard_key",
      "type" : "int"
-   },
-   {
-     "name" : "dm_passcard_id",
-     "type" : "string"
    },
    {
      "name" : "dm_status_id",
@@ -33,14 +25,6 @@
    {
      "name" : "timestamp",
      "type" : "string"
-   },
-   {
-     "name": "dm_date_id",
-     "type": "int"
-   },
-   {
-     "name": "dm_time_id",
-     "type": "string"
    }
  ]
 }

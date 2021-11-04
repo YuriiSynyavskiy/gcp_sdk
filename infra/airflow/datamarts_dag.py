@@ -38,5 +38,12 @@ with airflow.DAG(
         sql=sql_update_throughput_datamart
     )
 
+    end_of_job = PythonOperator(
+        task_id='end_of_job',
+        python_callable=message_logging,
+        op_args=[logger, 'INFO', str(datetime.now(tz=None)) + ' Job with id {{run_id}} ended'],
+        trigger_rule='all_done',
+        dag=dag
+    )
 
-    start_of_job >> get_last_datamarts_updates >> throughput_datamart
+    start_of_job >> get_last_datamarts_updates >> throughput_datamart >> end_of_job

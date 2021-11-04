@@ -55,26 +55,6 @@ def gen_passages(number: int):
             'dm_time_id': now.strftime('%H%M%S')
         }
 
-        passcard_query = f'''
-            SELECT dm_passcard_id
-            FROM `{dataset_id}.{passcard_table_name}`
-            WHERE passcard_key = {message['dm_passcard_key']}
-            AND current_flag = "Y"
-        '''
-        gate_query = f'''
-            SELECT dm_gate_id
-            FROM `{dataset_id}.{gate_table_name}`
-            WHERE gate_key = "{message['dm_gate_key']}"
-            AND flag = "Y"
-        '''
-
-        message['dm_passcard_id'] = get_request_to_bq(
-            bq_client, passcard_query,
-        )
-        message['dm_gate_id'] = get_request_to_bq(
-            bq_client, gate_query,
-        )
-
         future = publisher.publish(
             topic_name,
             json.dumps(message).encode('utf-8'),
