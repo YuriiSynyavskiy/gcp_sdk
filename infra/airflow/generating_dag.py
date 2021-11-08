@@ -87,6 +87,6 @@ with airflow.DAG(
         trigger_rule='all_done',
         dag=dag
     )
-
+    
     start_of_job >> define_file_to_process >> generate_department_data >> generate_person_data >> \
     generate_location_data >> generate_gate_data >> end_of_job
