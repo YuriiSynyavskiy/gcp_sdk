@@ -52,7 +52,7 @@ def create_staging_schema(dataset_id, table_name):
     else:
         query = f"""
                 CREATE TABLE {dataset_id}.{table_name}(
-                    gate_id STRING not null,
+                    gate_key STRING not null,
                     contact_information STRING,
                     state STRING,
                     throughput STRING,

@@ -23,6 +23,19 @@ with airflow.DAG(
         dag=dag
     )
 
+    execute_generating_dag = TriggerDagRunOperator(
+        task_id='execute_generating_dag',
+        trigger_dag_id='generating_dag',
+        dag=dag
+    )
+
+    generating_dag_sensor = ExternalTaskSensor(
+        task_id='generating_dag_sensor',
+        external_dag_id='generating_dag',
+        external_task_id='end_of_job',
+        dag=dag
+    )
+
     execute_person_scd_dag = TriggerDagRunOperator(
         task_id='execute_person_scd_dag',
         trigger_dag_id='person_scd_dag',
@@ -114,7 +127,6 @@ with airflow.DAG(
         dag=dag
     )
 
-
     end_of_job = PythonOperator(
         task_id='end_of_job',
         python_callable=message_logging,
@@ -122,7 +134,8 @@ with airflow.DAG(
         trigger_rule='all_done',
         dag=dag
     )
-    start_of_job >> execute_person_scd_dag >> person_scd_dag_sensor >> execute_passcard_scd_dag >> passcard_scd_dag_sensor >> \
-    execute_department_scd_dag >> department_scd_dag_sensor >> execute_gate_scd_dag >> gate_scd_dag_sensor >> \
-    execute_location_scd_dag >> location_scd_dag_sensor >> execute_fact_dag >> fact_dag_sensor >> \
-    execute_datamarts_dag >> datamarts_dag_sensor >> end_of_job
+
+    start_of_job >> execute_generating_dag >> generating_dag_sensor >> execute_person_scd_dag >> person_scd_dag_sensor >> \
+    execute_passcard_scd_dag >> passcard_scd_dag_sensor >> execute_department_scd_dag >> department_scd_dag_sensor >> \
+    execute_gate_scd_dag >> gate_scd_dag_sensor >> execute_location_scd_dag >> location_scd_dag_sensor >> \
+    execute_fact_dag >> fact_dag_sensor >> execute_datamarts_dag >> datamarts_dag_sensor >> end_of_job
