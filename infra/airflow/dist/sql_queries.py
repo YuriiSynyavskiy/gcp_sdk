@@ -2,7 +2,8 @@ from dist.tables import (location_table_name, dept_table_name,
                         tmp_dept_table_name, person_table_name, 
                         tmp_person_table_name, gate_table_name, 
                         datamart_throughput_table_name, fk_passage_table_name,
-                        error_fk_passage_table_name, passcard_table_name)
+                        error_fk_passage_table_name, passcard_table_name,
+                        datamart_gate_analysis_table_name)
 
 from dist.logger import get_logger
 
@@ -107,7 +108,7 @@ sql_landing_to_staging_location = f"""
     FROM {Variable.get('DATASET_ID')}.{location_table_name} a right join ( 
     select to_hex(md5(concat(run_id, building_id, security_id, gate_id, room_number, floor, description))) as hash_id, 
     location_key, building_id, security_id, gate_id, room_number, floor, description
-    FROM {Variable.get('LANDING_DATASET_ID')}.{location_table_name} ) b on a.location_key = b.location_key left join {Variable.get('DATASET_ID')}.{gate_table_name} c on b.gate_id = c.gate_key and c.flag='Y' 
+    FROM {Variable.get('LANDING_DATASET_ID')}.{location_table_name} ) b on a.location_key = b.location_key left join {Variable.get('DATASET_ID')}.{gate_table_name} c on b.gate_id = c.gate_key and c.flag='Y'
     WHERE a.hash_id is null or a.flag='Y' and a.hash_id != b.hash_id;
 
     COMMIT TRANSACTION;
@@ -118,8 +119,7 @@ sql_staging_to_target_location = f"""
     update {Variable.get('DATASET_ID')}.{location_table_name} t 
     set 
         t.effective_end_date = current_datetime(),
-        t.flag='N',
-        t.dm_gate_id = a.gate_id
+        t.flag='N'
     from {Variable.get('STAGING_DATASET_ID')}.{location_table_name} a 
     where a.location_key = t.location_key and t.flag='Y';
 
@@ -211,4 +211,12 @@ sql_staging_to_target_fk_passage = f"""
     WHERE dm_gate_id is null or dm_gate_id = '' or dm_passcard_id is null or dm_passcard_id = '';
 
     COMMIT TRANSACTION;
+"""
+
+sql_update_gate_analysis_datamart = f"""
+    INSERT INTO {Variable.get("DATAMART_DATASET_ID")}.{datamart_gate_analysis_table_name}
+    SELECT a.dm_gate_id, b.dm_location_id, b.dm_building_id, b.room_number, b.floor, a.state, a.throughput, CURRENT_TIMESTAMP() as timestamp
+    FROM {Variable.get('DATASET_ID')}.{gate_table_name} a left join ( 
+    select dm_location_id,dm_gate_id,dm_building_id, room_number, floor FROM {Variable.get('DATASET_ID')}.{location_table_name} ) b on a.dm_gate_id = b.dm_gate_id
+    where dm_location_id is not null and timestamp > '{{{{task_instance.xcom_pull(task_ids="get_last_datamarts_updates", key="{datamart_throughput_table_name}")}}}}';
 """

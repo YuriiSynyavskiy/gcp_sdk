@@ -40,14 +40,18 @@ def remove_file_from_gcs(file_name):
 
 
 def generate_room_number():
-    room = random.randint(101, 501)
+    room = random.randint(101, 599)
     floor = int(str(room)[0])
-    return room, floor
-
-
-def generate_description():
-    descriptions = ['Developers Zone', 'Kitchen', 'Meeting Room', 'Hall', 'Back Yard']
-    return random.choice(descriptions)
+    if floor == 1:
+        return room, floor, 'Hall'
+    elif floor == 2:
+        return room, floor, 'Back Yard'
+    elif floor == 3:
+        return room, floor, 'Developers Zone'
+    elif floor == 4:
+        return room, floor, 'Kitchen'
+    elif floor == 5:
+        return room, floor, 'Meeting Room'
 
 
 def create_location_data():
@@ -58,10 +62,10 @@ def create_location_data():
         location_writer.writeheader()
         list_of_dict = []
         for i in range(1,21):
-            room, floor = generate_room_number()
+            room, floor, descriptions = generate_room_number()
             result = {"id": str(i), "building_id": random.randint(1,2), 
-                      "security_id": random.randint(1,10), "gate_id": random.randint(1,50), 
-                      "room_number": room ,"floor": floor, "description": generate_description()}
+                      "security_id": random.randint(1,3), "gate_id": str(i), 
+                      "room_number": room ,"floor": floor, "description": descriptions}
             list_of_dict.append(result)
         location_writer.writerows(list_of_dict)
     return file_name
