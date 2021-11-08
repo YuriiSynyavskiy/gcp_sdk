@@ -3,29 +3,33 @@ from typing import List
 
 from dotenv import load_dotenv
 from google.cloud.bigquery import Client as BigQueryClient
-from google.cloud.bigquery import Table, SchemaField
+from google.cloud.bigquery import SchemaField, Table
 
 load_dotenv()
 
-PASSCARD_TABLE_NAME = 'dm_passcard'
 
-
-def create_passcard_table_in_dataset(
+def create_table_in_dataset(
     bq_client: BigQueryClient,
+    project_id,
     dataset_id: str,
-    schema: List[SchemaField]
-) -> None:
+    table_name: str,
+    schema: List[SchemaField],
+    exists_ok=True,
+) -> Table:
     table = Table('.'.join([
-        os.environ.get('PROJECT_ID'),
+        project_id,
         dataset_id,
-        PASSCARD_TABLE_NAME,
+        table_name,
     ]), schema=schema)
 
-    table = bq_client.create_table(table, exists_ok=True)
-    print(f'Created table `{table.full_table_id}`')
+    table = bq_client.create_table(table, exists_ok=exists_ok)
+
+    return table.full_table_id
 
 
 def init():
+    passcard_table_name = 'dm_passcard'
+
     staging_schema = [
         SchemaField('id', 'INTEGER', mode='REQUIRED'),
         SchemaField('person_id', 'STRING', mode='REQUIRED'),
@@ -49,16 +53,25 @@ def init():
 
     client = BigQueryClient()
 
-    create_passcard_table_in_dataset(
+    table = create_table_in_dataset(
         client,
+        os.environ.get('PROJECT_ID'),
         os.environ.get('DATASET_STAGING_ID'),
+        passcard_table_name,
         staging_schema,
+        True,
     )
-    create_passcard_table_in_dataset(
+    print(f'Created table `{table.full_table_id}`')
+
+    table = create_table_in_dataset(
         client,
+        os.environ.get('PROJECT_ID'),
         os.environ.get('DATASET_TARGET_ID'),
+        passcard_table_name,
         target_schema,
+        True,
     )
+    print(f'Created table `{table.full_table_id}`')
 
 
 if __name__ == '__main__':
